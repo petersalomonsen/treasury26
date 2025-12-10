@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -12,6 +12,21 @@ export function useUserTreasuries(
     queryKey: ["userTreasuries", accountId],
     queryFn: () => getUserTreasuries(accountId!),
     enabled: !!accountId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Query hook to get whitelisted tokens with balances and prices
+ * Fetches from backend which aggregates data from Ref Finance and FastNear
+ */
+export function useWhitelistTokens(
+  treasuryId: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: ["treasuryAssets", treasuryId],
+    queryFn: () => getTreasuryAssets(treasuryId!),
+    enabled: !!treasuryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

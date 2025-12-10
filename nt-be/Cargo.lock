@@ -1314,6 +1314,7 @@ dependencies = [
  "base64",
  "dotenvy",
  "moka",
+ "near-account-id",
  "near-api",
  "reqwest",
  "serde",

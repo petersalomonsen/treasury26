@@ -54,7 +54,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-sidebar border-r transition-transform duration-300 lg:relative lg:translate-x-0",
+          "fixed left-0 top-0 z-40 flex h-screen w-80 flex-col bg-sidebar border-r transition-transform duration-300 lg:relative lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
