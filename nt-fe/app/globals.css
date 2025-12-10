@@ -66,7 +66,7 @@
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #90a1b9;
-  --chart-1: #f54900;
+  --chart-1: var(--color-slate-800);
   --chart-2: #009689;
   --chart-3: #104e64;
   --chart-4: #ffb900;
@@ -81,6 +81,7 @@
   --sidebar-ring: #90a1b9;
 
   --header-bg: #fcfdfe;
+
 
   --shadow-color: #000000;
   --shadow-2xs: 0 1px 3px 0px rgb(from var(--shadow-color) r g b / 0.05);
@@ -112,7 +113,7 @@
   --border: #ffffff1a;
   --input: #ffffff26;
   --ring: var(--color-slate-200);
-  --chart-1: #1447e6;
+  --chart-1: var(--color-slate-200);
   --chart-2: #00bc7d;
   --chart-3: #fe9a00;
   --chart-4: #ad46ff;

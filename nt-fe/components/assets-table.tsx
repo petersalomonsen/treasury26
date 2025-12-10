@@ -20,8 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { useWhitelistTokens } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
 import { WhitelistToken } from "@/lib/api";
 
 const columnHelper = createColumnHelper<WhitelistToken>();
@@ -30,9 +28,7 @@ interface Props {
   tokens: WhitelistToken[];
 }
 
-export function AssetsTable({ tokens: inputTokens }: Props) {
-  const tokens = useMemo(() => inputTokens.filter(token => token.balance > 0), [inputTokens]);
-
+export function AssetsTable({ tokens }: Props) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "balanceUSD", desc: true },
   ]);
@@ -154,62 +150,57 @@ export function AssetsTable({ tokens: inputTokens }: Props) {
   }
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <div className="p-6 border-b">
-        <h2 className="text-lg font-semibold">Assets</h2>
-      </div>
 
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={
-                    header.id !== "symbol"
-                      ? "text-right text-muted-foreground"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {header.isPlaceholder ? null : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={header.column.getToggleSortingHandler()}
-                      className={`flex items-center gap-1 px-0 hover:bg-transparent ${header.id !== "symbol" ? "ml-auto" : ""
-                        }`}
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      {header.column.getIsSorted() === "desc" ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : header.column.getIsSorted() === "asc" ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ArrowUpDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="p-4">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <Table>
+      <TableHeader>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <TableRow key={headerGroup.id} className="hover:bg-transparent">
+            {headerGroup.headers.map((header) => (
+              <TableHead
+                key={header.id}
+                className={
+                  header.id !== "symbol"
+                    ? "text-right text-muted-foreground"
+                    : "text-muted-foreground"
+                }
+              >
+                {header.isPlaceholder ? null : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={header.column.getToggleSortingHandler()}
+                    className={`flex items-center gap-1 px-0 hover:bg-transparent ${header.id !== "symbol" ? "ml-auto" : ""
+                      }`}
+                  >
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    {header.column.getIsSorted() === "desc" ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : header.column.getIsSorted() === "asc" ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ArrowUpDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </TableHead>
+            ))}
+          </TableRow>
+        ))}
+      </TableHeader>
+      <TableBody>
+        {table.getRowModel().rows.map((row) => (
+          <TableRow key={row.id}>
+            {row.getVisibleCells().map((cell) => (
+              <TableCell key={cell.id} className="p-4">
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

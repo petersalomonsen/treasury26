@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { Database } from "lucide-react";
 import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
@@ -99,11 +99,10 @@ export function GeneralTab({ currentTreasury }: GeneralTabProps) {
             <button
               key={color}
               onClick={() => setSelectedColor(color)}
-              className={`h-10 w-10 rounded-full transition-all hover:scale-110 ${
-                selectedColor === color
+              className={`h-10 w-10 rounded-full transition-all hover:scale-110 ${selectedColor === color
                   ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
                   : ""
-              }`}
+                }`}
               style={{ backgroundColor: color }}
               aria-label={`Select color ${color}`}
             />
@@ -112,7 +111,7 @@ export function GeneralTab({ currentTreasury }: GeneralTabProps) {
       </div>
 
       <div className="rounded-lg border bg-card">
-        <Button className="w-full h-14 text-base font-semibold rounded-lg">
+        <Button className="w-full h-14">
           Create Request
         </Button>
       </div>

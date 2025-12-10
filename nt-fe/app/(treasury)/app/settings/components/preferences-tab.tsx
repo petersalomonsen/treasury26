@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import {
   Select,
   SelectContent,
@@ -67,7 +67,7 @@ export function PreferencesTab() {
       </div>
 
       <div className="rounded-lg border bg-card">
-        <Button className="w-full h-14 text-base font-semibold rounded-lg">
+        <Button className="w-full h-14">
           Save
         </Button>
       </div>

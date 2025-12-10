@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { Slider } from "@/components/ui/slider";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
@@ -68,7 +68,7 @@ export function VotingTab() {
       </div>
 
       <div className="rounded-lg border bg-card">
-        <Button className="w-full h-14 text-base font-semibold rounded-lg">
+        <Button className="w-full h-14">
           Create Request
         </Button>
       </div>
