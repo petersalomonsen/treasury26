@@ -30,7 +30,8 @@ interface Props {
   tokens: WhitelistToken[];
 }
 
-export function AssetsTable({ tokens }: Props) {
+export function AssetsTable({ tokens: inputTokens }: Props) {
+  const tokens = useMemo(() => inputTokens.filter(token => token.balance > 0), [inputTokens]);
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: "balanceUSD", desc: true },
