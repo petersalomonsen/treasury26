@@ -13,6 +13,7 @@ export default function Assets({ tokens }: Props) {
             <Tabs>
                 <TabsList>
                     <TabsTrigger value="assets">Assets</TabsTrigger>
+                    <TabsTrigger value="assets2">Assets 2</TabsTrigger>
 
                 </TabsList>
                 <TabsContents>

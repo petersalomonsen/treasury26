@@ -5,7 +5,7 @@ mod utils;
 
 use axum::Router;
 use moka::future::Cache;
-use near_api::NetworkConfig;
+use near_api::{NetworkConfig, RPCEndpoint};
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::{Any, CorsLayer};
@@ -16,6 +16,7 @@ pub struct AppState {
     pub http_client: reqwest::Client,
     pub cache: Cache<String, serde_json::Value>,
     pub network: NetworkConfig,
+    pub archival_network: NetworkConfig,
     pub env_vars: EnvVars,
 }
 
@@ -28,11 +29,29 @@ async fn main() {
         .time_to_live(Duration::from_secs(600))
         .build();
 
+    let env_vars = EnvVars::default();
     let state = Arc::new(AppState {
         http_client: reqwest::Client::new(),
         cache,
-        network: NetworkConfig::mainnet(),
-        env_vars: EnvVars::default(),
+        network: NetworkConfig {
+            rpc_endpoints: vec![
+                RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
+                    .with_api_key(env_vars.fastnear_api_key.clone()),
+            ],
+            ..NetworkConfig::mainnet()
+        },
+        archival_network: NetworkConfig {
+            rpc_endpoints: vec![
+                RPCEndpoint::new(
+                    "https://archival-rpc.mainnet.fastnear.com/"
+                        .parse()
+                        .unwrap(),
+                )
+                .with_api_key(env_vars.fastnear_api_key.clone()),
+            ],
+            ..NetworkConfig::mainnet()
+        },
+        env_vars,
     });
 
     let cors = CorsLayer::new()

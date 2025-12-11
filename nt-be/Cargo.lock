@@ -248,8 +248,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "145052bdd345b87320e369255277e3fb5152762ad123a901ef5c262dd38fe8d2"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -1206,8 +1208,6 @@ dependencies = [
 [[package]]
 name = "near-api"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4db0fc73b5d3312219b251b9b777da274867c48e9793f6916f5c17d3914384a7"
 dependencies = [
  "async-trait",
  "base64",
@@ -1232,8 +1232,6 @@ dependencies = [
 [[package]]
 name = "near-api-types"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82ad7dfc45b9bd7755d7a036d406aada171eb5d95428cbc324dc916018ec3ffb"
 dependencies = [
  "base64",
  "borsh",
@@ -1312,7 +1310,9 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "base64",
+ "chrono",
  "dotenvy",
+ "futures",
  "moka",
  "near-account-id",
  "near-api",

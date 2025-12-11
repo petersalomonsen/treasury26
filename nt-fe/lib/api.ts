@@ -127,3 +127,42 @@ export async function getTreasuryAssets(
     return { tokens: [], totalBalanceUSD: 0 };
   }
 }
+
+export interface BalanceHistoryEntry {
+  timestamp: number;
+  date: string;
+  balance: string;
+}
+
+export interface TokenBalanceHistory {
+  "1H": BalanceHistoryEntry[];
+  "1D": BalanceHistoryEntry[];
+  "1W": BalanceHistoryEntry[];
+  "1M": BalanceHistoryEntry[];
+  "1Y": BalanceHistoryEntry[];
+  "All": BalanceHistoryEntry[];
+}
+
+/**
+ * Get balance history for a specific token
+ * Fetches historical balance data across multiple time periods
+ */
+export async function getTokenBalanceHistory(
+  accountId: string,
+  tokenId: string
+): Promise<TokenBalanceHistory | null> {
+  if (!accountId || !tokenId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/token-balance-history`;
+
+    const response = await axios.get<TokenBalanceHistory>(url, {
+      params: { accountId, tokenId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error getting token balance history", error);
+    return null;
+  }
+}

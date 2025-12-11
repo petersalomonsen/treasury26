@@ -5,3 +5,4 @@ pub const REF_FINANCE_CONTRACT_ID: &AccountIdRef =
 
 pub const NEAR_ICON: &str = "https://img.rhea.finance/images/NEARIcon.png";
 pub const WRAP_NEAR_ICON: &str = "https://img.rhea.finance/images/w-NEAR-no-border.png";
+pub const BLOCKS_PER_HOUR: u64 = 300; // Approximate blocks per hour on NEAR

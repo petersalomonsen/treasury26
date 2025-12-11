@@ -13,5 +13,9 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/whitelist-tokens",
             get(handlers::whitelist_tokens::get_whitelist_tokens),
         )
+        .route(
+            "/api/token-balance-history",
+            get(handlers::token_balance_history::get_token_balance_history),
+        )
         .with_state(state)
 }

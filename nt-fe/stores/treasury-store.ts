@@ -10,14 +10,14 @@ export type Treasury = {
 };
 
 type TreasuryStore = {
-  selectedTreasury: string;
+  selectedTreasury: string | null;
   setSelectedTreasury: (treasury: string) => void;
 };
 
 export const useTreasuryStore = create<TreasuryStore>()(
   persist(
     (set) => ({
-      selectedTreasury: "devdao.sputnikdao.near",
+      selectedTreasury: null,
       setSelectedTreasury: (treasury: string) =>
         set({ selectedTreasury: treasury }),
     }),

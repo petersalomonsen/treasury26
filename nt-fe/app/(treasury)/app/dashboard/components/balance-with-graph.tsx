@@ -1,32 +1,48 @@
 import { WhitelistToken } from "@/lib/api";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import BalanceChart from "./chart";
-import { Button } from "@/components/button";
+import { Button } from "@/components/ui/button";
 import { ArrowLeftRight, ArrowUpRightIcon, Database, Download } from "lucide-react";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useTokenBalanceHistory } from "@/hooks/use-treasury-queries";
+import { useTreasury } from "@/stores/treasury-store";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { subscribeWithSelector } from "zustand/middleware";
 
 interface Props {
     totalBalanceUSD: number;
     tokens: WhitelistToken[];
 }
 
-const chartData = [
-    { name: "Jan 1", value: 100 },
-    { name: "Jan 2", value: 200 },
-    { name: "Jan 3", value: 300 },
-    { name: "Jan 4", value: 400 },
-    { name: "Jan 5", value: 500 },
-    { name: "Jan 6", value: 600 },
-    { name: "Jan 7", value: 700 },
-    { name: "Jan 8", value: 800 },
-    { name: "Jan 9", value: 900 },
-]
+type TimePeriod = "1H" | "1D" | "1W" | "1M" | "1Y" | "All";
+
+const TIME_PERIODS: TimePeriod[] = ["1D", "1W", "1M", "1Y"];
 
 export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
+    const { selectedTreasury: accountId } = useTreasury();
     const [selectedToken, setSelectedToken] = useState<string>("all");
+    const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
 
     const selectedTokenData = selectedToken === "all" ? null : tokens.find(token => token.symbol === selectedToken);
     const balance = selectedTokenData ? selectedTokenData.balanceUSD : totalBalanceUSD;
+
+    // Determine which token ID to fetch history for
+    const tokenIdForHistory = selectedToken === "all" ? "near" : (selectedTokenData?.id || null);
+
+    // Fetch balance history for the selected token
+    const { data: balanceHistory, isLoading } = useTokenBalanceHistory(accountId, tokenIdForHistory);
+
+    // Transform balance history data for the chart
+    const chartData = useMemo(() => {
+        if (!balanceHistory || !balanceHistory[selectedPeriod]) {
+            return [];
+        }
+
+        return balanceHistory[selectedPeriod].map((entry) => ({
+            name: entry.date,
+            value: parseFloat(entry.balance),
+        }));
+    }, [balanceHistory, selectedPeriod]);
 
     return (
         <div className="flex flex-col gap-2  rounded-lg border bg-card p-6">
@@ -35,7 +51,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                     <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
                     <p className="text-3xl font-bold mt-2">{balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
                 </div>
-                <div>
+                <div className="flex gap-2 items-center">
                     <Select value={selectedToken} onValueChange={setSelectedToken}>
                         <SelectTrigger size="sm">
                             <SelectValue />
@@ -47,6 +63,9 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                             ))}
                         </SelectContent>
                     </Select>
+                    <ToggleGroup type="single" size="sm" variant={"outline"} value={selectedPeriod} onValueChange={(e) => setSelectedPeriod(e as TimePeriod)}>
+                        {TIME_PERIODS.map((e => <ToggleGroupItem value={e}>{e}</ToggleGroupItem>))}
+                    </ToggleGroup>
                 </div>
             </div>
 
@@ -56,10 +75,8 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                 <Button><ArrowLeftRight className="size-4" /> Exchange</Button>
                 <Button><Database className="size-4" /> Earn</Button>
             </div>
-
-
             <BalanceChart data={chartData} />
 
-        </div>
+        </div >
     )
 }

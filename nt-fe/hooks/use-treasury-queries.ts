@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -27,6 +27,22 @@ export function useWhitelistTokens(
     queryKey: ["treasuryAssets", treasuryId],
     queryFn: () => getTreasuryAssets(treasuryId!),
     enabled: !!treasuryId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Query hook to get token balance history across multiple time periods
+ * Fetches historical balance data from the backend
+ */
+export function useTokenBalanceHistory(
+  accountId: string | null | undefined,
+  tokenId: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: ["tokenBalanceHistory", accountId, tokenId],
+    queryFn: () => getTokenBalanceHistory(accountId!, tokenId!),
+    enabled: !!accountId && !!tokenId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
