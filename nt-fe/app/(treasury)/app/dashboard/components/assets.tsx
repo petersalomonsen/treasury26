@@ -1,6 +1,7 @@
 import { AssetsTable } from "@/components/assets-table";
 import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { WhitelistToken } from "@/lib/api";
+import { PageCard } from "@/components/card";
 
 interface Props {
     tokens: WhitelistToken[];
@@ -9,12 +10,10 @@ interface Props {
 export default function Assets({ tokens }: Props) {
 
     return (
-        <div className="rounded-lg border bg-card overflow-hidden p-3">
+        <PageCard>
             <Tabs>
                 <TabsList>
                     <TabsTrigger value="assets">Assets</TabsTrigger>
-                    <TabsTrigger value="assets2">Assets 2</TabsTrigger>
-
                 </TabsList>
                 <TabsContents>
                     <TabsContent value="assets">
@@ -22,6 +21,6 @@ export default function Assets({ tokens }: Props) {
                     </TabsContent>
                 </TabsContents>
             </Tabs>
-        </div>
+        </PageCard>
     )
 }

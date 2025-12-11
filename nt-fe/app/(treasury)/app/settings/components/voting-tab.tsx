@@ -2,10 +2,11 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/button";
+import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
+import { PageCard } from "@/components/card";
 
 export function VotingTab() {
   const [votingThreshold, setVotingThreshold] = useState([2]);
@@ -13,7 +14,7 @@ export function VotingTab() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border bg-card p-6 space-y-6">
+      <PageCard>
         <div>
           <h3 className="text-lg font-semibold">Voting Threshold</h3>
           <p className="text-sm text-muted-foreground">
@@ -45,9 +46,9 @@ export function VotingTab() {
             </p>
           </div>
         </div>
-      </div>
+      </PageCard>
 
-      <div className="rounded-lg border bg-card p-6 space-y-4">
+      <PageCard>
         <div>
           <h3 className="text-lg font-semibold">Vote Duration</h3>
           <p className="text-sm text-muted-foreground">
@@ -65,7 +66,7 @@ export function VotingTab() {
             min="1"
           />
         </div>
-      </div>
+      </PageCard>
 
       <div className="rounded-lg border bg-card">
         <Button className="w-full h-14">

@@ -2,11 +2,12 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/button";
+import { Button } from "@/components/ui/button";
 import { Database } from "lucide-react";
 import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { type Treasury } from "@/stores/treasury-store";
+import { PageCard } from "@/components/card";
 
 const COLOR_OPTIONS = [
   "#6B7280", // gray
@@ -39,7 +40,7 @@ export function GeneralTab({ currentTreasury }: GeneralTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border bg-card p-6 space-y-4">
+      <PageCard>
         <div>
           <h3 className="text-lg font-semibold">Treasury Name</h3>
           <p className="text-sm text-muted-foreground">
@@ -66,9 +67,9 @@ export function GeneralTab({ currentTreasury }: GeneralTabProps) {
             />
           </div>
         </div>
-      </div>
+      </PageCard>
 
-      <div className="flex flex-col rounded-lg border bg-card space-y-4">
+      <PageCard>
         <div className="p-6 pb-0">
           <h3 className="text-lg font-semibold">Logo</h3>
           <p className="text-xs text-muted-foreground">
@@ -84,9 +85,9 @@ export function GeneralTab({ currentTreasury }: GeneralTabProps) {
           </div>
           <Button variant="outline">Upload Logo</Button>
         </div>
-      </div>
+      </PageCard>
 
-      <div className="rounded-lg border bg-card p-6 space-y-4">
+      <PageCard>
         <div>
           <h3 className="text-lg font-semibold">Primary Color</h3>
           <p className="text-sm text-muted-foreground">
@@ -100,15 +101,15 @@ export function GeneralTab({ currentTreasury }: GeneralTabProps) {
               key={color}
               onClick={() => setSelectedColor(color)}
               className={`h-10 w-10 rounded-full transition-all hover:scale-110 ${selectedColor === color
-                  ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
-                  : ""
+                ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                : ""
                 }`}
               style={{ backgroundColor: color }}
               aria-label={`Select color ${color}`}
             />
           ))}
         </div>
-      </div>
+      </PageCard>
 
       <div className="rounded-lg border bg-card">
         <Button className="w-full h-14">

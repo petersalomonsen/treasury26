@@ -6,6 +6,7 @@ import { useTreasury, } from "@/stores/treasury-store";
 import { GeneralTab } from "./components/general-tab";
 import { VotingTab } from "./components/voting-tab";
 import { PreferencesTab } from "./components/preferences-tab";
+import { PageCard } from "@/components/card";
 
 
 export default function SettingsPage() {

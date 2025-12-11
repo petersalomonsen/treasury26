@@ -1,6 +1,7 @@
 "use client";
 
-import { Button } from "@/components/button";
+import { PageCard } from "@/components/card";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -43,8 +44,8 @@ export function PreferencesTab() {
   const [timezone, setTimezone] = useState("GMT+01:00");
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border bg-card p-6 space-y-4">
+    <div className="flex flex-col gap-6">
+      <PageCard>
         <div>
           <h3 className="text-lg font-semibold">Time Zone</h3>
           <p className="text-sm text-muted-foreground">
@@ -64,13 +65,14 @@ export function PreferencesTab() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </PageCard >
+
 
       <div className="rounded-lg border bg-card">
         <Button className="w-full h-14">
           Save
         </Button>
       </div>
-    </div>
+    </div >
   );
 }

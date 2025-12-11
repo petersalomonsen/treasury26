@@ -8,6 +8,7 @@ import { useTokenBalanceHistory } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { subscribeWithSelector } from "zustand/middleware";
+import { PageCard } from "@/components/card";
 
 interface Props {
     totalBalanceUSD: number;
@@ -45,7 +46,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
     }, [balanceHistory, selectedPeriod]);
 
     return (
-        <div className="flex flex-col gap-2  rounded-lg border bg-card p-6">
+        <PageCard>
             <div className="flex justify-around gap-4 mb-6">
                 <div className="flex-1">
                     <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
@@ -76,7 +77,6 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                 <Button><Database className="size-4" /> Earn</Button>
             </div>
             <BalanceChart data={chartData} />
-
-        </div >
+        </PageCard>
     )
 }
