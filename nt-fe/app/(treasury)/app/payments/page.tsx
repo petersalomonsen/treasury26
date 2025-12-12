@@ -55,8 +55,7 @@ function Step1() {
       <p className="font-semibold ">New Payment</p>
       <TokenInput control={form.control} amountName="payment.amount" tokenSymbolName="payment.tokenSymbol" tokenAddressName="payment.tokenAddress" tokenNetworkName="payment.tokenNetwork" tokenIconName="payment.tokenIcon" tokenDecimalsName="payment.tokenDecimals" />
       <FormField control={form.control} name="payment.address" render={({ field, fieldState }) => (
-        <InputBlock title="To" invalid={!!fieldState.error}
-        >
+        <InputBlock title="To" invalid={!!fieldState.error}>
           <LargeInput type="text" borderless {...field} placeholder="Recipient address or name" />
           {fieldState.error ? <FormMessage /> : <p className="text-muted-foreground text-xs invisible">Invisible</p>}
         </InputBlock>
@@ -235,7 +234,13 @@ export default function PaymentsPage() {
             <StepWizard
               steps={[
                 {
-                  nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Payment" })(handleNext),
+                  nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Payment" })(() => {
+                    form.trigger(["payment.address", "payment.amount", "payment.tokenSymbol", "payment.tokenAddress", "payment.tokenNetwork", "payment.tokenIcon", "payment.tokenDecimals"]).then((isValid) => {
+                      if (isValid) {
+                        return handleNext();
+                      }
+                    });
+                  }),
                   component: Step1,
                 },
                 {

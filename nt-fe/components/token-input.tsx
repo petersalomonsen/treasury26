@@ -23,7 +23,7 @@ interface TokenInputProps<TFieldValues extends FieldValues = FieldValues> {
 
 export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ control, amountName, tokenSymbolName, tokenAddressName, tokenNetworkName, tokenIconName, tokenDecimalsName }: TokenInputProps<TFieldValues>) {
     const { selectedTreasury } = useTreasury();
-    const { setValue, formState: { errors } } = useFormContext<TFieldValues>();
+    const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
 
     const tokenSymbol = useWatch({ control, name: tokenSymbolName });
@@ -41,24 +41,25 @@ export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ con
     }, [amount, tokenPriceData?.price]);
 
     return (
-        <InputBlock title="Send" invalid={!!errors.amount} topRightContent={
-            <div className="flex items-center gap-2">
-                {tokenBalanceData?.balance && !isBalanceLoading && (
-                    <>
-                        <p className="text-xs text-muted-foreground">
-                            Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {tokenSymbol.toUpperCase()}
-                        </p>
-                        <Button variant="outline" size="sm" onClick={() => {
-                            setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
-                        }}>MAX</Button>
-                    </>
-                )}
-            </div>
-        } >
-            <FormField
-                control={control}
-                name={amountName}
-                render={({ field, fieldState }) => (
+        <FormField
+            control={control}
+            name={amountName}
+            render={({ field, fieldState }) => (
+                <InputBlock title="Send" invalid={!!fieldState.error} topRightContent={
+                    <div className="flex items-center gap-2">
+                        {tokenBalanceData?.balance && !isBalanceLoading && (
+                            <>
+                                <p className="text-xs text-muted-foreground">
+                                    Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {tokenSymbol.toUpperCase()}
+                                </p>
+                                <Button variant="outline" size="sm" onClick={() => {
+                                    setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
+                                }}>MAX</Button>
+                            </>
+                        )}
+                    </div>
+                } >
+
                     <>
                         <div className="flex justify-between items-center">
                             <div className="flex-1">
@@ -90,9 +91,9 @@ export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ con
                         </p>
                         {fieldState.error ? <FormMessage /> : <p className="text-muted-foreground text-xs invisible">Invisible</p>}
                     </>
-                )}
-            />
-        </InputBlock>
+                </InputBlock>
+            )}
+        />
     );
 }
 
