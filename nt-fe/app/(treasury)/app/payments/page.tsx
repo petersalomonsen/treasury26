@@ -77,7 +77,7 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
 
   const estimatedUSDValue = useMemo(() => {
     if (!tokenPriceData?.price) return 0;
-    return payment.amount * tokenPriceData.price;
+    return Number(payment.amount) * tokenPriceData.price;
   }, [payment.amount, tokenPriceData?.price]);
 
   return (
@@ -140,7 +140,7 @@ export default function PaymentsPage() {
     defaultValues: {
       payment: {
         address: "",
-        amount: 0,
+        amount: "0",
         memo: "",
       },
       approveWithMyVote: false,

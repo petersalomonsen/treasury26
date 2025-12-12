@@ -17,7 +17,7 @@ export function LargeInput({ className, search, borderless, ...props }: LargeInp
             )}
             <Input
                 {...props}
-                className={cn("text-xl! h-12 shrink-0 p-0", search && "pl-10", borderless && "border-none focus-visible:ring-0 focus-visible:ring-offset-0", className)}
+                className={cn("text-xl! h-12 shrink-0 p-0 bg-transparent!", search && "pl-10", borderless && "border-none focus-visible:ring-0 focus-visible:ring-offset-0", className)}
             />
         </div>
     );
