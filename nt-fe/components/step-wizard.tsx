@@ -1,7 +1,7 @@
 import { useState, } from "react";
 import { Control, FieldValues, Path, } from "react-hook-form";
 import { Button } from "./ui/button";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, Loader2 } from "lucide-react";
 import { FormDescription, FormField, FormLabel } from "./ui/form";
 import { Switch } from "./ui/switch";
 import { motion, AnimatePresence } from "motion/react";
@@ -89,10 +89,15 @@ export function StepperHeader({ title, handleBack }: HandleBackWithTitleProps) {
     );
 }
 
-export const StepperNextButton = ({ text }: { text: string }) => {
+export const StepperNextButton = ({ text, loading = false }: { text: string; loading?: boolean }) => {
     return (handleNext?: () => void) => {
         const { type, onClick } = handleNext ? { type: "button" as const, onClick: handleNext } : { type: "submit" as const, onClick: undefined };
-        return <Button className="w-full h-13 font-semibold text-lg" type={type} onClick={onClick}>{text}</ Button>;
+        return (
+            <Button className="w-full h-13 font-semibold text-lg" type={type} onClick={onClick} disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                {text}
+            </Button>
+        );
     }
 };
 

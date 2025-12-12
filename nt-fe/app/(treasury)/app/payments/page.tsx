@@ -12,7 +12,7 @@ import { LargeInput } from "@/components/large-input";
 import { ApprovalInfo } from "@/components/approval-info";
 import { ReviewStep, StepperNextButton, StepWizard } from "@/components/step-wizard";
 import { useStorageDepositIsRegistered, useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
@@ -135,6 +135,7 @@ export default function PaymentsPage() {
   const { selectedTreasury } = useTreasury();
   const { signAndSendTransactions } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
@@ -150,70 +151,71 @@ export default function PaymentsPage() {
 
   console.log("Form values", form.getValues());
 
-  const onSubmit = (data: PaymentFormValues) => {
-    const isNEAR = data.payment.tokenSymbol === "NEAR";
-    const description = {
-      title: "Payment Request",
-      notes: data.payment.memo || "",
-    }
-    const deposit = policy?.proposal_bond || 0;
-    const gas = "270000000000000";
+  const onSubmit = async (data: PaymentFormValues) => {
+    setIsSubmitting(true);
+    try {
+      const isNEAR = data.payment.tokenSymbol === "NEAR";
+      const description = {
+        title: "Payment Request",
+        notes: data.payment.memo || "",
+      }
+      const deposit = policy?.proposal_bond || 0;
+      const gas = "270000000000000";
 
-    const calls = [
-      {
-        receiverId: selectedTreasury,
-        actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "add_proposal",
-              args: {
-                proposal: {
-                  description: encodeToMarkdown(description),
-                  kind: {
-                    Transfer: {
-                      token_id: isNEAR ? "" : data.payment.tokenAddress,
-                      receiver_id: data.payment.address,
-                      amount: Big(data.payment.amount).mul(Big(10).pow(data.payment.tokenDecimals)).toFixed(),
+      const calls = [
+        {
+          receiverId: selectedTreasury,
+          actions: [
+            {
+              type: "FunctionCall",
+              params: {
+                methodName: "add_proposal",
+                args: {
+                  proposal: {
+                    description: encodeToMarkdown(description),
+                    kind: {
+                      Transfer: {
+                        token_id: isNEAR ? "" : data.payment.tokenAddress,
+                        receiver_id: data.payment.address,
+                        amount: Big(data.payment.amount).mul(Big(10).pow(data.payment.tokenDecimals)).toFixed(),
+                      },
                     },
                   },
                 },
+                gas,
+                deposit,
               },
-              gas,
-              deposit,
             },
-          },
-        ],
-      },
-    ];
-    const needsStorageDeposit =
-      !data.payment.isRegistered &&
-      !isNEAR
+          ],
+        },
+      ];
+      const needsStorageDeposit =
+        !data.payment.isRegistered &&
+        !isNEAR
 
-    if (needsStorageDeposit) {
-      const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
-      calls.push({
-        receiverId: data.payment.tokenAddress,
-        actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "storage_deposit",
-              args: {
-                account_id: data.payment.address,
-                registration_only: true,
-              } as any,
-              gas,
-              deposit: depositInYocto,
+      if (needsStorageDeposit) {
+        const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
+        calls.push({
+          receiverId: data.payment.tokenAddress,
+          actions: [
+            {
+              type: "FunctionCall",
+              params: {
+                methodName: "storage_deposit",
+                args: {
+                  account_id: data.payment.address,
+                  registration_only: true,
+                } as any,
+                gas,
+                deposit: depositInYocto,
+              },
             },
-          },
-        ],
-      });
-    }
+          ],
+        });
+      }
 
-    console.log("Payments calls", calls);
-    try {
-      const result = signAndSendTransactions({
+      console.log("Payments calls", calls);
+      const result = await signAndSendTransactions({
         transactions: calls.map((call) => ({
           receiverId: call.receiverId!,
           actions: call.actions as ConnectorAction[],
@@ -223,8 +225,9 @@ export default function PaymentsPage() {
       console.log("Payments result", result);
     } catch (error) {
       console.error("Payments error", error);
+    } finally {
+      setIsSubmitting(false);
     }
-
   };
 
   console.log("Form errors", form.formState.errors);
@@ -241,7 +244,7 @@ export default function PaymentsPage() {
                   component: Step1,
                 },
                 {
-                  nextButton: ({ }) => StepperNextButton({ text: "Confirm and Submit Request" })(),
+                  nextButton: ({ }) => StepperNextButton({ text: "Confirm and Submit Request", loading: isSubmitting })(),
                   component: Step2,
                 }
               ]}
