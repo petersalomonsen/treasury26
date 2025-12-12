@@ -149,8 +149,6 @@ export default function PaymentsPage() {
     },
   });
 
-  console.log("Form values", form.getValues());
-
   const onSubmit = async (data: PaymentFormValues) => {
     setIsSubmitting(true);
     try {
@@ -215,22 +213,19 @@ export default function PaymentsPage() {
       }
 
       console.log("Payments calls", calls);
-      const result = await signAndSendTransactions({
+      await signAndSendTransactions({
         transactions: calls.map((call) => ({
           receiverId: call.receiverId!,
           actions: call.actions as ConnectorAction[],
         })),
         network: "mainnet",
       });
-      console.log("Payments result", result);
     } catch (error) {
       console.error("Payments error", error);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  console.log("Form errors", form.formState.errors);
 
   return (
     <PageComponentLayout title="Payments" description="Send and receive funds securely">
