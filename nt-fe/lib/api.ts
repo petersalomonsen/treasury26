@@ -1,3 +1,4 @@
+import { Policy } from "@/types/policy";
 import axios from "axios";
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "";
@@ -40,7 +41,7 @@ export async function getUserTreasuries(
   }
 }
 
-export interface WhitelistToken {
+export interface TreasuryAsset {
   id: string;
   decimals: number;
   balance: bigint;
@@ -50,14 +51,15 @@ export interface WhitelistToken {
   name: string;
   icon: string;
   weight: number;
+  network: string;
 }
 
 export interface TreasuryAssets {
-  tokens: WhitelistToken[];
+  tokens: TreasuryAsset[];
   totalBalanceUSD: number;
 }
 
-interface WhitelistTokenRaw {
+interface TreasuryAssetRaw {
   id: string;
   decimals: number;
   balance: string;
@@ -65,6 +67,7 @@ interface WhitelistTokenRaw {
   symbol: string;
   name: string;
   icon: string;
+  network: string;
 }
 
 /**
@@ -80,7 +83,7 @@ export async function getTreasuryAssets(
   try {
     const url = `${BACKEND_API_BASE}/user/assets`;
 
-    const response = await axios.get<WhitelistTokenRaw[]>(url, {
+    const response = await axios.get<TreasuryAssetRaw[]>(url, {
       params: { accountId: treasuryId },
     });
 
@@ -103,6 +106,7 @@ export async function getTreasuryAssets(
         name: token.name,
         icon: token.icon,
         weight: 0,
+        network: token.network,
       };
     });
 
@@ -178,19 +182,19 @@ export interface TokenPrice {
  * Get price for a single token (supports both NEAR and FT tokens)
  * Fetches from backend which aggregates data from multiple price sources
  */
-export async function getTokenPrice(tokenId: string): Promise<TokenPrice | null> {
+export async function getTokenPrice(tokenId: string, network: string): Promise<TokenPrice | null> {
   if (!tokenId) return null;
 
   try {
     const url = `${BACKEND_API_BASE}/token/price`;
 
     const response = await axios.get<TokenPrice>(url, {
-      params: { tokenId },
+      params: { tokenId, network },
     });
 
     return response.data;
   } catch (error) {
-    console.error(`Error getting price for token ${tokenId}`, error);
+    console.error(`Error getting price for token ${tokenId} / ${network}`, error);
     return null;
   }
 }
@@ -231,20 +235,21 @@ export interface TokenBalance {
  */
 export async function getTokenBalance(
   accountId: string,
-  tokenId: string
+  tokenAddress: string,
+  network: string
 ): Promise<TokenBalance | null> {
-  if (!accountId || !tokenId) return null;
+  if (!accountId || !tokenAddress || !network) return null;
 
   try {
     const url = `${BACKEND_API_BASE}/user/balance`;
 
     const response = await axios.get<TokenBalance>(url, {
-      params: { accountId, tokenId },
+      params: { accountId, tokenId: tokenAddress, network },
     });
 
     return response.data;
   } catch (error) {
-    console.error(`Error getting balance for ${accountId} / ${tokenId}`, error);
+    console.error(`Error getting balance for ${accountId} / ${tokenAddress} / ${network}`, error);
     return null;
   }
 }
@@ -270,5 +275,57 @@ export async function getBatchTokenBalances(
   } catch (error) {
     console.error("Error getting batch token balances", error);
     return [];
+  }
+}
+
+/**
+ * Get treasury policy including roles, permissions, and approval settings
+ * Fetches from backend which queries the treasury contract
+ */
+export async function getTreasuryPolicy(
+  treasuryId: string
+): Promise<Policy | null> {
+  if (!treasuryId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/treasury/policy`;
+
+    const response = await axios.get<Policy>(url, {
+      params: { treasuryId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting treasury policy for ${treasuryId}`, error);
+    return null;
+  }
+}
+
+export interface StorageDeposit {
+  total?: string;
+  available?: string;
+}
+
+/**
+ * Get storage deposit for an account on a specific token contract
+ * Returns the storage deposit amount required for the account to hold the token
+ */
+export async function getStorageDepositIsRegistered(
+  accountId: string,
+  tokenId: string
+): Promise<boolean> {
+  if (!accountId || !tokenId) return false;
+
+  try {
+    const url = `${BACKEND_API_BASE}/token/storage-deposit/is-registered`;
+
+    const response = await axios.get<boolean>(url, {
+      params: { accountId, tokenId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting storage deposit is registered for ${accountId} / ${tokenId}`, error);
+    return false;
   }
 }

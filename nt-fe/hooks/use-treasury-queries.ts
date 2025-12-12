@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -20,14 +20,27 @@ export function useUserTreasuries(
  * Query hook to get whitelisted tokens with balances and prices
  * Fetches from backend which aggregates data from Ref Finance and FastNear
  */
-export function useWhitelistTokens(
+export function useTreasuryAssets(
   treasuryId: string | null | undefined,
+  options?: {
+    onlyPositiveBalance?: boolean;
+  }
 ) {
   return useQuery({
-    queryKey: ["treasuryAssets", treasuryId],
+    queryKey: ["treasuryAssets", treasuryId, options?.onlyPositiveBalance],
     queryFn: () => getTreasuryAssets(treasuryId!),
     enabled: !!treasuryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    select: (data) => {
+      if (options?.onlyPositiveBalance) {
+        const filteredTokens = data.tokens.filter((asset) => Number(asset.balance) > 0);
+        return {
+          ...data,
+          tokens: filteredTokens,
+        };
+      }
+      return data;
+    },
   });
 }
 
@@ -52,11 +65,11 @@ export function useTokenBalanceHistory(
  * Fetches from backend which aggregates data from multiple price sources
  * Supports both NEAR and FT tokens
  */
-export function useTokenPrice(tokenId: string | null | undefined) {
+export function useTokenPrice(tokenId: string | null | undefined, network: string | null | undefined) {
   return useQuery({
-    queryKey: ["tokenPrice", tokenId],
-    queryFn: () => getTokenPrice(tokenId!),
-    enabled: !!tokenId,
+    queryKey: ["tokenPrice", tokenId, network],
+    queryFn: () => getTokenPrice(tokenId!, network!),
+    enabled: !!tokenId && !!network,
     staleTime: 1000 * 60, // 1 minute (prices change frequently)
     refetchInterval: 1000 * 60, // Refetch every minute
   });
@@ -83,12 +96,13 @@ export function useBatchTokenPrices(tokenIds: string[]) {
  */
 export function useTokenBalance(
   accountId: string | null | undefined,
-  tokenId: string | null | undefined
+  tokenId: string | null | undefined,
+  network: string | null | undefined
 ) {
   return useQuery({
     queryKey: ["tokenBalance", accountId, tokenId],
-    queryFn: () => getTokenBalance(accountId!, tokenId!),
-    enabled: !!accountId && !!tokenId,
+    queryFn: () => getTokenBalance(accountId!, tokenId!, network!),
+    enabled: !!accountId && !!tokenId && !!network,
     staleTime: 1000 * 30, // 30 seconds (balances change frequently)
     refetchInterval: 1000 * 30, // Refetch every 30 seconds
   });
@@ -108,5 +122,35 @@ export function useBatchTokenBalances(
     enabled: !!accountId && tokenIds.length > 0,
     staleTime: 1000 * 30, // 30 seconds
     refetchInterval: 1000 * 30, // Refetch every 30 seconds
+  });
+}
+
+/**
+ * Query hook to get treasury policy including roles, permissions, and approval settings
+ * Fetches from backend which queries the treasury contract and caches the result
+ */
+export function useTreasuryPolicy(treasuryId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["treasuryPolicy", treasuryId],
+    queryFn: () => getTreasuryPolicy(treasuryId!),
+    enabled: !!treasuryId,
+    staleTime: 1000 * 60 * 10, // 10 minutes (policies don't change frequently)
+  });
+}
+
+/**
+ * Query hook to get storage deposit for an account on a specific token contract
+ * Returns the storage deposit amount required for the account to hold the token
+ * Useful for determining if storage deposit is needed before token transfers
+ */
+export function useStorageDepositIsRegistered(
+  accountId: string | null | undefined,
+  tokenId: string | null | undefined
+) {
+  return useQuery({
+    queryKey: ["storageDepositIsRegistered", accountId, tokenId],
+    queryFn: () => getStorageDepositIsRegistered(accountId!, tokenId!),
+    enabled: !!accountId && !!tokenId,
+    staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
   });
 }

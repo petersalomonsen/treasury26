@@ -35,5 +35,13 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/user/assets",
             get(handlers::user::assets::get_user_assets),
         )
+        .route(
+            "/api/token/storage-deposit/is-registered",
+            get(handlers::token::storage_deposit::is_registered::is_storage_deposit_registered),
+        )
+        .route(
+            "/api/treasury/policy",
+            get(handlers::treasury::policy::get_treasury_policy),
+        )
         .with_state(state)
 }

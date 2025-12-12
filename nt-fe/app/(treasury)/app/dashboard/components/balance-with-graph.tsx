@@ -1,4 +1,4 @@
-import { WhitelistToken } from "@/lib/api";
+import { TreasuryAsset } from "@/lib/api";
 import { useState, useMemo } from "react";
 import BalanceChart from "./chart";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { formatBalance } from "@/lib/utils";
 
 interface Props {
     totalBalanceUSD: number;
-    tokens: WhitelistToken[];
+    tokens: TreasuryAsset[];
 }
 
 type TimePeriod = "1H" | "1D" | "1W" | "1M" | "1Y" | "All";
@@ -61,7 +61,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                         <SelectContent>
                             <SelectItem value="all">All Tokens</SelectItem>
                             {tokens.map(token => (
-                                <SelectItem key={token.symbol} value={token.symbol}>{token.symbol}</SelectItem>
+                                <SelectItem key={token.id} value={token.id}>{token.symbol}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>

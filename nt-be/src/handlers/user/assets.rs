@@ -48,6 +48,7 @@ pub struct SimplifiedToken {
     pub symbol: String,
     pub name: String,
     pub icon: String,
+    pub network: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -307,6 +308,7 @@ fn build_simplified_tokens(
                         token_metadata.name.clone()
                     },
                     icon: get_token_icon(&token_id, &token_metadata),
+                    network: "NEAR".to_string(),
                 })
             } else {
                 None
