@@ -36,7 +36,7 @@ export default function Home() {
           Next.js + Axum Backend
         </h1>
 
-        <div className="flex flex-col items-center gap-4 p-8 rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <div className="flex flex-col items-center gap-4 p-8 rounded-lg border">
           <h2 className="text-xl font-semibold text-zinc-700 dark:text-zinc-300">
             Message from Backend:
           </h2>

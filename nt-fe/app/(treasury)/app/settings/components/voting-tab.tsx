@@ -39,7 +39,7 @@ export function VotingTab() {
             className="w-full"
           />
 
-          <div className="flex items-start gap-2 rounded-lg bg-blue-500/10 p-4 border border-blue-500/20">
+          <div className="flex items-start gap-2 rounded-lg bg-muted p-4 border">
             <AlertTriangle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
             <p className="text-sm text-blue-500">
               A 2-of-4 threshold provides a good balance between security and operational flexibility.

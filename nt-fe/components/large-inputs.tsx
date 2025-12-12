@@ -51,7 +51,7 @@ export function TokenInput({ amount, token, setAmount, setToken }: TokenInputPro
                                 : ''}
                     </p>
                 </div>
-                <div className="flex items-center space-x-2 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center space-x-2 bg-background rounded-lg px-3 py-2 border">
                     <span className="font-semibold text-lg dark:text-white">
                         {!isBalanceLoading && tokenBalanceData?.balance ? formatBalance(tokenBalanceData?.balance, tokenBalanceData?.decimals) : 'Loading balance...'} {token.toUpperCase()}
 

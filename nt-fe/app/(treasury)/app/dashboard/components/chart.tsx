@@ -36,13 +36,13 @@ export default function BalanceChart({ data = [] }: BalanceChartProps) {
                     <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
                         <stop
                             offset="5%"
-                            stopColor="var(--color-chart-1)"
                             stopOpacity={0.3}
+                            stopColor="var(--color-foreground)"
                         />
                         <stop
                             offset="95%"
-                            stopColor="var(--color-chart-1)"
                             stopOpacity={0.05}
+                            stopColor="var(--color-foreground)"
                         />
                     </linearGradient>
                 </defs>
@@ -63,7 +63,7 @@ export default function BalanceChart({ data = [] }: BalanceChartProps) {
                 <Area
                     type="monotone"
                     dataKey="value"
-                    stroke="var(--color-chart-1)"
+                    stroke="var(--color-foreground)"
                     strokeWidth={2}
                     fill="url(#fillValue)"
                 />
