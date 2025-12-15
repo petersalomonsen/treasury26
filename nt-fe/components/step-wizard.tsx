@@ -6,6 +6,10 @@ import { FormDescription, FormField, FormLabel } from "./ui/form";
 import { Switch } from "./ui/switch";
 import { motion, AnimatePresence } from "motion/react";
 
+export interface StepProps {
+    handleBack?: () => void;
+}
+
 interface Step {
     nextButton: React.ComponentType<{ handleNext: () => void }>;
     component: React.ComponentType<{ handleBack?: () => void }>;
@@ -116,7 +120,7 @@ export function ReviewStep<TFieldValues extends FieldValues = FieldValues>({ con
             {children}
 
             <FormField control={control} name={approveWithMyVoteName} render={({ field }) => (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-4">
                     <Switch id="approveWithMyVote" checked={field.value} onCheckedChange={field.onChange} />
                     <div className="flex flex-col gap-1">
                         <FormLabel htmlFor="approveWithMyVote" className="font-semibold">Approve with my vote</FormLabel>

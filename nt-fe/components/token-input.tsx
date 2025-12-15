@@ -13,6 +13,7 @@ import { Control, FieldValues, Path, PathValue, useFormContext, useWatch } from 
 
 interface TokenInputProps<TFieldValues extends FieldValues = FieldValues> {
     control: Control<TFieldValues>;
+    title?: string;
     amountName: Path<TFieldValues>;
     tokenSymbolName: Path<TFieldValues>;
     tokenAddressName: Path<TFieldValues>;
@@ -21,7 +22,7 @@ interface TokenInputProps<TFieldValues extends FieldValues = FieldValues> {
     tokenDecimalsName: Path<TFieldValues>;
 }
 
-export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ control, amountName, tokenSymbolName, tokenAddressName, tokenNetworkName, tokenIconName, tokenDecimalsName }: TokenInputProps<TFieldValues>) {
+export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ control, title, amountName, tokenSymbolName, tokenAddressName, tokenNetworkName, tokenIconName, tokenDecimalsName }: TokenInputProps<TFieldValues>) {
     const { selectedTreasury } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
@@ -45,7 +46,7 @@ export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ con
             control={control}
             name={amountName}
             render={({ field, fieldState }) => (
-                <InputBlock title="Send" invalid={!!fieldState.error} topRightContent={
+                <InputBlock title={title} invalid={!!fieldState.error} topRightContent={
                     <div className="flex items-center gap-2">
                         {tokenBalanceData?.balance && !isBalanceLoading && (
                             <>

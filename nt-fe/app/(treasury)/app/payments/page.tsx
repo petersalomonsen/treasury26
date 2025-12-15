@@ -1,6 +1,7 @@
 "use client";
 
 import { PageCard } from "@/components/card";
+import { RecipientInput } from "@/components/recipient-input";
 import { TokenInput } from "@/components/token-input";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useFieldArray, useForm, useFormContext, } from "react-hook-form";
@@ -8,9 +9,8 @@ import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { InputBlock } from "@/components/input-block";
-import { LargeInput } from "@/components/large-input";
 import { ApprovalInfo } from "@/components/approval-info";
-import { ReviewStep, StepperNextButton, StepWizard } from "@/components/step-wizard";
+import { ReviewStep, StepperHeader, StepperNextButton, StepWizard } from "@/components/step-wizard";
 import { useBatchStorageDepositIsRegistered, useBatchTokenPrices, useStorageDepositIsRegistered, useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,16 +59,11 @@ function Step1() {
   });
   return (
     <>
-      <p className="font-semibold ">New Payment</p>
+      <StepperHeader title="New Payment" />
       {fields.map((field, index) => (
         <Fragment key={field.id}>
           <TokenInput key={field.id} control={form.control} amountName={`payment.${index}.amount`} tokenSymbolName={`payment.${index}.tokenSymbol`} tokenAddressName={`payment.${index}.tokenAddress`} tokenNetworkName={`payment.${index}.tokenNetwork`} tokenIconName={`payment.${index}.tokenIcon`} tokenDecimalsName={`payment.${index}.tokenDecimals`} />
-          <FormField control={form.control} name={`payment.${index}.address`} render={({ field, fieldState }) => (
-            <InputBlock title="To" invalid={!!fieldState.error}>
-              <LargeInput type="text" borderless {...field} placeholder="Recipient address or name" />
-              {fieldState.error ? <FormMessage /> : <p className="text-muted-foreground text-xs invisible">Invisible</p>}
-            </InputBlock>
-          )} />
+          <RecipientInput control={form.control} name={`payment.${index}.address`} />
           {fields.length > 1 && (
             <div className="flex justify-end">
               <Button variant={'link'} type="button" className="text-muted-foreground/80 hover:text-muted-foreground" size={'sm'} onClick={() => remove(index)}><Trash className="size-3 text-primary" /> Remove Recipient</Button>
