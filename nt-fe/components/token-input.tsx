@@ -20,9 +20,10 @@ interface TokenInputProps<TFieldValues extends FieldValues = FieldValues> {
     tokenNetworkName: Path<TFieldValues>;
     tokenIconName: Path<TFieldValues>;
     tokenDecimalsName: Path<TFieldValues>;
+    disabledTokenSelect?: boolean;
 }
 
-export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ control, title, amountName, tokenSymbolName, tokenAddressName, tokenNetworkName, tokenIconName, tokenDecimalsName }: TokenInputProps<TFieldValues>) {
+export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ control, title, amountName, tokenSymbolName, tokenAddressName, tokenNetworkName, tokenIconName, tokenDecimalsName, disabledTokenSelect }: TokenInputProps<TFieldValues>) {
     const { selectedTreasury } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
@@ -70,7 +71,7 @@ export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ con
                                 control={control}
                                 name={tokenSymbolName}
                                 render={({ field }) => (
-                                    <TokenSelect selectedToken={field.value} setSelectedToken={(token) => {
+                                    <TokenSelect disabled={disabledTokenSelect} selectedToken={field.value} setSelectedToken={(token) => {
                                         field.onChange(token.symbol);
                                         setValue(tokenAddressName, token.id as PathValue<TFieldValues, Path<TFieldValues>>);
                                         setValue(tokenNetworkName, token.network as PathValue<TFieldValues, Path<TFieldValues>>);

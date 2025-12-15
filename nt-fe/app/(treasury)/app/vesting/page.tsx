@@ -49,6 +49,13 @@ const vestingFormSchema = z.object({
       message: "Recipient and token address cannot be the same",
     });
   }
+  if (data.vesting.startDate >= data.vesting.endDate) {
+    ctx.addIssue({
+      code: "custom",
+      path: [`vesting.endDate`],
+      message: "Start date must be before end date",
+    });
+  }
 });
 
 type VestingFormValues = z.infer<typeof vestingFormSchema>;
@@ -58,7 +65,7 @@ function Step1() {
   return (
     <>
       <StepperHeader title="New Vesting Schedule" />
-      <TokenInput control={form.control} amountName={`vesting.amount`} tokenSymbolName={`vesting.tokenSymbol`} tokenAddressName={`vesting.tokenAddress`} tokenNetworkName={`vesting.tokenNetwork`} tokenIconName={`vesting.tokenIcon`} tokenDecimalsName={`vesting.tokenDecimals`} />
+      <TokenInput title="Amount" control={form.control} amountName={`vesting.amount`} tokenSymbolName={`vesting.tokenSymbol`} tokenAddressName={`vesting.tokenAddress`} tokenNetworkName={`vesting.tokenNetwork`} tokenIconName={`vesting.tokenIcon`} tokenDecimalsName={`vesting.tokenDecimals`} />
       <RecipientInput control={form.control} name="vesting.address" />
 
       <div className="grid grid-cols-2 gap-4">

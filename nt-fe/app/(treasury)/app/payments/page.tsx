@@ -32,16 +32,16 @@ const paymentFormSchema = z.object({
       }),
     memo: z.string().optional(),
     isRegistered: z.boolean().optional(),
-    tokenSymbol: z.string().min(1, "Token symbol is required"),
-    tokenAddress: z.string().min(1, "Token address is required"),
-    tokenNetwork: z.string().min(1, "Token network is required"),
-    tokenDecimals: z.number().min(1, "Token decimals is required"),
-    tokenIcon: z.string().min(1, "Token icon is required"),
   })),
+  tokenSymbol: z.string().min(1, "Token symbol is required"),
+  tokenAddress: z.string().min(1, "Token address is required"),
+  tokenNetwork: z.string().min(1, "Token network is required"),
+  tokenDecimals: z.number().min(1, "Token decimals is required"),
+  tokenIcon: z.string().min(1, "Token icon is required"),
   approveWithMyVote: z.boolean()
 }).superRefine((data, ctx) => {
   for (const [index, payment] of data.payment.entries()) {
-    if (payment.address === payment.tokenAddress) {
+    if (payment.address === data.tokenAddress) {
       ctx.addIssue({
         code: "custom",
         path: [`payment.${index}.address`],
@@ -62,7 +62,7 @@ function Step1() {
       <StepperHeader title="New Payment" />
       {fields.map((field, index) => (
         <Fragment key={field.id}>
-          <TokenInput key={field.id} control={form.control} amountName={`payment.${index}.amount`} tokenSymbolName={`payment.${index}.tokenSymbol`} tokenAddressName={`payment.${index}.tokenAddress`} tokenNetworkName={`payment.${index}.tokenNetwork`} tokenIconName={`payment.${index}.tokenIcon`} tokenDecimalsName={`payment.${index}.tokenDecimals`} />
+          <TokenInput key={field.id} disabledTokenSelect={index > 0} control={form.control} amountName={`payment.${index}.amount`} tokenSymbolName={`tokenSymbol`} tokenAddressName={`tokenAddress`} tokenNetworkName={`tokenNetwork`} tokenIconName={`tokenIcon`} tokenDecimalsName={`tokenDecimals`} />
           <RecipientInput control={form.control} name={`payment.${index}.address`} />
           {fields.length > 1 && (
             <div className="flex justify-end">
@@ -72,7 +72,7 @@ function Step1() {
         </Fragment>
       ))}
       <div className="flex justify-start">
-        <Button variant={'link'} type="button" size={'sm'} onClick={() => append({ address: "", amount: "0", tokenSymbol: "", tokenAddress: "", tokenNetwork: "", tokenDecimals: 0, tokenIcon: "" })}><Plus className="size-3 text-primary" /> Add New Recipient</Button>
+        <Button variant={'link'} type="button" size={'sm'} onClick={() => append({ address: "", amount: "0", memo: "" })}><Plus className="size-3 text-primary" /> Add New Recipient</Button>
       </div>
       < ApprovalInfo />
     </>
@@ -85,8 +85,12 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
     control: form.control,
     name: "payment",
   });
-  const { data: storageDepositData } = useBatchStorageDepositIsRegistered(fields.map((field) => ({ accountId: field.address, tokenId: field.tokenAddress })));
-  const { data: tokenPriceData } = useBatchTokenPrices(fields.map((field) => field.tokenAddress));
+  const tokenSymbol = form.watch("tokenSymbol");
+  const tokenIcon = form.watch("tokenIcon");
+  const tokenAddress = form.watch("tokenAddress");
+  const tokenNetwork = form.watch("tokenNetwork");
+  const { data: storageDepositData } = useBatchStorageDepositIsRegistered(fields.map((field) => ({ accountId: field.address, tokenId: tokenAddress })));
+  const { data: tokenPriceData } = useTokenPrice(tokenAddress, tokenNetwork);
 
   useEffect(() => {
     if (!storageDepositData) return;
@@ -94,19 +98,17 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
     // Match storage deposit data by accountId and tokenId, not by index
     for (const [index, field] of fields.entries()) {
       const matchingDeposit = storageDepositData.find(
-        (deposit) => deposit.account_id === field.address && deposit.token_id === field.tokenAddress
+        (deposit) => deposit.account_id === field.address
       );
       form.setValue(`payment.${index}.isRegistered`, matchingDeposit?.is_registered ?? false);
     }
   }, [storageDepositData, fields, form]);
 
   const totalEstimatedUSDValue = useMemo(() => {
-    if (!tokenPriceData || tokenPriceData.length === 0) return 0;
+    if (!tokenPriceData?.price) return 0;
 
     return fields.reduce((total, field) => {
-      const matchingPrice = tokenPriceData.find((price) => price.token_id === field.tokenAddress);
-      if (!matchingPrice) return total;
-      return total + (Number(field.amount) * matchingPrice.price);
+      return total + (Number(field.amount) * tokenPriceData.price);
     }, 0);
   }, [fields, tokenPriceData]);
 
@@ -125,20 +127,19 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
       </InputBlock>
       <div className="flex flex-col gap-2">
         <p className="font-semibold">Recipients</p>
-        {fields.map((recipient, index) => {
-          const matchingPrice = tokenPriceData?.find((price) => price.token_id === recipient.tokenAddress);
-          const estimatedUSDValue = matchingPrice ? Number(recipient.amount) * matchingPrice.price : 0;
+        {fields.map((field, index) => {
+          const estimatedUSDValue = tokenPriceData?.price ? Number(field.amount) * tokenPriceData.price : 0;
 
           return (
             <div key={index} className="flex gap-2 items-baseline w-full">
               <div className="py-1.5 px-3 rounded-full bg-muted text-muted-foreground text-sm font-semibold">{index + 1}</div>
               <div className="flex flex-col gap-1 w-full">
                 <div className="flex justify-between items-center w-full text-sm ">
-                  <p className=" font-semibold">{recipient.address}</p>
+                  <p className=" font-semibold">{field.address}</p>
                   <div className="flex items-center gap-2">
-                    <img src={recipient.tokenIcon} alt={recipient.tokenSymbol} className="size-6 rounded-full" />
+                    <img src={tokenIcon} alt={tokenSymbol} className="size-6 rounded-full" />
                     <div className="flex flex-col items-end">
-                      <p className="text-sm font-semibold">{recipient.amount} {recipient.tokenSymbol}</p>
+                      <p className="text-sm font-semibold">{field.amount} {tokenSymbol}</p>
                       <p className="text-xs text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
@@ -192,7 +193,7 @@ export default function PaymentsPage() {
     }
     const payment = data.payment[0];
     try {
-      const isNEAR = payment.tokenSymbol === "NEAR";
+      const isNEAR = data.tokenSymbol === "NEAR";
       const description = {
         title: "Payment Request",
         notes: payment.memo || "",
@@ -213,9 +214,9 @@ export default function PaymentsPage() {
                     description: encodeToMarkdown(description),
                     kind: {
                       Transfer: {
-                        token_id: isNEAR ? "" : payment.tokenAddress,
+                        token_id: isNEAR ? "" : data.tokenAddress,
                         receiver_id: payment.address,
-                        amount: Big(payment.amount).mul(Big(10).pow(payment.tokenDecimals)).toFixed(),
+                        amount: Big(payment.amount).mul(Big(10).pow(data.tokenDecimals)).toFixed(),
                       },
                     },
                   },
@@ -234,7 +235,7 @@ export default function PaymentsPage() {
       if (needsStorageDeposit) {
         const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
         calls.push({
-          receiverId: payment.tokenAddress,
+          receiverId: data.tokenAddress,
           actions: [
             {
               type: "FunctionCall",

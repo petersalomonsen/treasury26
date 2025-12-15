@@ -13,9 +13,10 @@ import { TreasuryAsset } from "@/lib/api";
 interface TokenSelectProps {
     selectedToken: string | null;
     setSelectedToken: (token: TreasuryAsset) => void;
+    disabled?: boolean;
 }
 
-export default function TokenSelect({ selectedToken, setSelectedToken }: TokenSelectProps) {
+export default function TokenSelect({ selectedToken, setSelectedToken, disabled }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
     const { data: { tokens = [] } = {} } = useTreasuryAssets(selectedTreasury, { onlyPositiveBalance: true });
     const [open, setOpen] = useState(false);
@@ -36,7 +37,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken }: TokenSe
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger asChild disabled={disabled}>
                 <Button variant="outline" className="bg-card hover:bg-card hover:border-muted-foreground rounded-full">
                     {selectedTokenData ? (
                         <>
