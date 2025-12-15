@@ -1,4 +1,4 @@
-use axum::{Router, routing::get};
+use axum::{Router, routing::{get, post}};
 use std::sync::Arc;
 
 use crate::{AppState, handlers};
@@ -38,6 +38,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/token/storage-deposit/is-registered",
             get(handlers::token::storage_deposit::is_registered::is_storage_deposit_registered),
+        )
+        .route(
+            "/api/token/storage-deposit/is-registered/batch",
+            post(handlers::token::storage_deposit::is_registered::get_batch_storage_deposit_is_registered),
         )
         .route(
             "/api/treasury/policy",

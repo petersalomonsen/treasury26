@@ -1,7 +1,7 @@
 "use client";
 
 import { PageCard } from "@/components/card";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import {
   Select,
   SelectContent,

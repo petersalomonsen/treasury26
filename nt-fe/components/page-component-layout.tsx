@@ -3,7 +3,7 @@
 import { Menu, Sun, Moon, Bell } from "lucide-react";
 import { useSidebar } from "@/stores/sidebar-store";
 import { useThemeStore } from "@/stores/theme-store";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { SignIn } from "@/components/sign-in";
 import { ReactNode, useEffect } from "react";
 

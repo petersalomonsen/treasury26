@@ -3,7 +3,7 @@
 import { PageCard } from "@/components/card";
 import { TokenInput } from "@/components/token-input";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { useForm, useFormContext, } from "react-hook-form";
+import { useFieldArray, useForm, useFormContext, } from "react-hook-form";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,17 +11,19 @@ import { InputBlock } from "@/components/input-block";
 import { LargeInput } from "@/components/large-input";
 import { ApprovalInfo } from "@/components/approval-info";
 import { ReviewStep, StepperNextButton, StepWizard } from "@/components/step-wizard";
-import { useStorageDepositIsRegistered, useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useEffect, useMemo, useState } from "react";
+import { useBatchStorageDepositIsRegistered, useBatchTokenPrices, useStorageDepositIsRegistered, useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
 import { encodeToMarkdown } from "@/lib/utils";
 import Big from "big.js";
 import { ConnectorAction } from "@hot-labs/near-connect";
+import { Button } from "@/components/button";
+import { Plus, Trash } from "lucide-react";
 
 const paymentFormSchema = z.object({
-  payment: z.object({
+  payment: z.array(z.object({
     address: z.string().min(2, "Recipient should be at least 2 characters").max(64, "Recipient must be less than 64 characters"),
     amount: z
       .string()
@@ -35,57 +37,91 @@ const paymentFormSchema = z.object({
     tokenNetwork: z.string().min(1, "Token network is required"),
     tokenDecimals: z.number().min(1, "Token decimals is required"),
     tokenIcon: z.string().min(1, "Token icon is required"),
-  }),
+  })),
   approveWithMyVote: z.boolean()
 }).superRefine((data, ctx) => {
-  if (data.payment.address === data.payment.tokenAddress) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["recipient"],
-      message: "Recipient and token address cannot be the same",
-    });
+  for (const [index, payment] of data.payment.entries()) {
+    if (payment.address === payment.tokenAddress) {
+      ctx.addIssue({
+        code: "custom",
+        path: [`payment.${index}.address`],
+        message: "Recipient and token address cannot be the same",
+      });
+    }
   }
-
 });
 
 function Step1() {
   const form = useFormContext<PaymentFormValues>();
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "payment",
+  });
   return (
     <>
       <p className="font-semibold ">New Payment</p>
-      <TokenInput control={form.control} amountName="payment.amount" tokenSymbolName="payment.tokenSymbol" tokenAddressName="payment.tokenAddress" tokenNetworkName="payment.tokenNetwork" tokenIconName="payment.tokenIcon" tokenDecimalsName="payment.tokenDecimals" />
-      <FormField control={form.control} name="payment.address" render={({ field, fieldState }) => (
-        <InputBlock title="To" invalid={!!fieldState.error}>
-          <LargeInput type="text" borderless {...field} placeholder="Recipient address or name" />
-          {fieldState.error ? <FormMessage /> : <p className="text-muted-foreground text-xs invisible">Invisible</p>}
-        </InputBlock>
-      )} />
-      <ApprovalInfo />
+      {fields.map((field, index) => (
+        <Fragment key={field.id}>
+          <TokenInput key={field.id} control={form.control} amountName={`payment.${index}.amount`} tokenSymbolName={`payment.${index}.tokenSymbol`} tokenAddressName={`payment.${index}.tokenAddress`} tokenNetworkName={`payment.${index}.tokenNetwork`} tokenIconName={`payment.${index}.tokenIcon`} tokenDecimalsName={`payment.${index}.tokenDecimals`} />
+          <FormField control={form.control} name={`payment.${index}.address`} render={({ field, fieldState }) => (
+            <InputBlock title="To" invalid={!!fieldState.error}>
+              <LargeInput type="text" borderless {...field} placeholder="Recipient address or name" />
+              {fieldState.error ? <FormMessage /> : <p className="text-muted-foreground text-xs invisible">Invisible</p>}
+            </InputBlock>
+          )} />
+          {fields.length > 1 && (
+            <div className="flex justify-end">
+              <Button variant={'link'} type="button" className="text-muted-foreground/80 hover:text-muted-foreground" size={'sm'} onClick={() => remove(index)}><Trash className="size-3 text-primary" /> Remove Recipient</Button>
+            </div>
+          )}
+        </Fragment>
+      ))}
+      <div className="flex justify-start">
+        <Button variant={'link'} type="button" size={'sm'} onClick={() => append({ address: "", amount: "0", tokenSymbol: "", tokenAddress: "", tokenNetwork: "", tokenDecimals: 0, tokenIcon: "" })}><Plus className="size-3 text-primary" /> Add New Recipient</Button>
+      </div>
+      < ApprovalInfo />
     </>
   );
 }
 
 function Step2({ handleBack }: { handleBack?: () => void }) {
   const form = useFormContext<PaymentFormValues>();
-  const { payment } = form.watch();
-  const { data: storageDepositData } = useStorageDepositIsRegistered(payment.address, payment.tokenAddress);
-  const { data: tokenPriceData } = useTokenPrice(payment.tokenAddress, "NEAR");
+  const { fields } = useFieldArray({
+    control: form.control,
+    name: "payment",
+  });
+  const { data: storageDepositData } = useBatchStorageDepositIsRegistered(fields.map((field) => ({ accountId: field.address, tokenId: field.tokenAddress })));
+  const { data: tokenPriceData } = useBatchTokenPrices(fields.map((field) => field.tokenAddress));
 
   useEffect(() => {
-    form.setValue("payment.isRegistered", !!storageDepositData);
-  }, [storageDepositData]);
+    if (!storageDepositData) return;
 
-  const estimatedUSDValue = useMemo(() => {
-    if (!tokenPriceData?.price) return 0;
-    return Number(payment.amount) * tokenPriceData.price;
-  }, [payment.amount, tokenPriceData?.price]);
+    // Match storage deposit data by accountId and tokenId, not by index
+    for (const [index, field] of fields.entries()) {
+      const matchingDeposit = storageDepositData.find(
+        (deposit) => deposit.account_id === field.address && deposit.token_id === field.tokenAddress
+      );
+      form.setValue(`payment.${index}.isRegistered`, matchingDeposit?.is_registered ?? false);
+    }
+  }, [storageDepositData, fields, form]);
+
+  const totalEstimatedUSDValue = useMemo(() => {
+    if (!tokenPriceData || tokenPriceData.length === 0) return 0;
+
+    return fields.reduce((total, field) => {
+      const matchingPrice = tokenPriceData.find((price) => price.token_id === field.tokenAddress);
+      if (!matchingPrice) return total;
+      return total + (Number(field.amount) * matchingPrice.price);
+    }, 0);
+  }, [fields, tokenPriceData]);
+
 
   return (
     <ReviewStep control={form.control} reviewingTitle="Review Your Payment" approveWithMyVoteName="approveWithMyVote" handleBack={handleBack}>
       <InputBlock title="" invalid={false}>
         <div className="flex flex-col gap-1 text-sm text-center">
           <p>You are sending a total of</p>
-          <p className="text-2xl font-semibold">${estimatedUSDValue.toLocaleString('en-US', {
+          <p className="text-2xl font-semibold">${totalEstimatedUSDValue.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
           })}</p>
@@ -94,34 +130,39 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
       </InputBlock>
       <div className="flex flex-col gap-2">
         <p className="font-semibold">Recipients</p>
-        {[payment].map((recipient, index) => (
-          <div key={index} className="flex gap-2 items-baseline w-full">
-            <div className="py-1.5 px-3 rounded-full bg-muted text-muted-foreground text-sm font-semibold">{index + 1}</div>
-            <div className="flex flex-col gap-1 w-full">
-              <div className="flex justify-between items-center w-full text-sm ">
-                <p className=" font-semibold">{recipient.address}</p>
-                <div className="flex items-center gap-2">
-                  <img src={recipient.tokenIcon} alt={recipient.tokenSymbol} className="size-6 rounded-full" />
-                  <div className="flex flex-col items-end">
-                    <p className="text-sm font-semibold">{recipient.amount} {recipient.tokenSymbol}</p>
-                    <p className="text-xs text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}</p>
+        {fields.map((recipient, index) => {
+          const matchingPrice = tokenPriceData?.find((price) => price.token_id === recipient.tokenAddress);
+          const estimatedUSDValue = matchingPrice ? Number(recipient.amount) * matchingPrice.price : 0;
+
+          return (
+            <div key={index} className="flex gap-2 items-baseline w-full">
+              <div className="py-1.5 px-3 rounded-full bg-muted text-muted-foreground text-sm font-semibold">{index + 1}</div>
+              <div className="flex flex-col gap-1 w-full">
+                <div className="flex justify-between items-center w-full text-sm ">
+                  <p className=" font-semibold">{recipient.address}</p>
+                  <div className="flex items-center gap-2">
+                    <img src={recipient.tokenIcon} alt={recipient.tokenSymbol} className="size-6 rounded-full" />
+                    <div className="flex flex-col items-end">
+                      <p className="text-sm font-semibold">{recipient.amount} {recipient.tokenSymbol}</p>
+                      <p className="text-xs text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}</p>
+                    </div>
                   </div>
                 </div>
+                <FormField control={form.control} name={`payment.${index}.memo`} render={({ field }) => (
+                  <Textarea
+                    value={field.value}
+                    onChange={field.onChange}
+                    rows={2}
+                    placeholder="Add a comment (optional)..."
+                  />
+                )} />
               </div>
-              <FormField control={form.control} name="payment.memo" render={({ field }) => (
-                <Textarea
-                  value={field.value}
-                  onChange={field.onChange}
-                  rows={2}
-                  placeholder="Add a comment (optional)..."
-                />
-              )} />
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <></>
     </ReviewStep>
@@ -139,22 +180,27 @@ export default function PaymentsPage() {
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
-      payment: {
+      payment: [{
         address: "",
         amount: "0",
         memo: "",
-      },
+      }],
       approveWithMyVote: false,
     },
   });
 
   const onSubmit = async (data: PaymentFormValues) => {
     setIsSubmitting(true);
+    if (data.payment.length > 0) {
+      alert("Batch payments are not supported yet");
+      return;
+    }
+    const payment = data.payment[0];
     try {
-      const isNEAR = data.payment.tokenSymbol === "NEAR";
+      const isNEAR = payment.tokenSymbol === "NEAR";
       const description = {
         title: "Payment Request",
-        notes: data.payment.memo || "",
+        notes: payment.memo || "",
       }
       const deposit = policy?.proposal_bond || 0;
       const gas = "270000000000000";
@@ -172,9 +218,9 @@ export default function PaymentsPage() {
                     description: encodeToMarkdown(description),
                     kind: {
                       Transfer: {
-                        token_id: isNEAR ? "" : data.payment.tokenAddress,
-                        receiver_id: data.payment.address,
-                        amount: Big(data.payment.amount).mul(Big(10).pow(data.payment.tokenDecimals)).toFixed(),
+                        token_id: isNEAR ? "" : payment.tokenAddress,
+                        receiver_id: payment.address,
+                        amount: Big(payment.amount).mul(Big(10).pow(payment.tokenDecimals)).toFixed(),
                       },
                     },
                   },
@@ -187,20 +233,20 @@ export default function PaymentsPage() {
         },
       ];
       const needsStorageDeposit =
-        !data.payment.isRegistered &&
+        !payment.isRegistered &&
         !isNEAR
 
       if (needsStorageDeposit) {
         const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
         calls.push({
-          receiverId: data.payment.tokenAddress,
+          receiverId: payment.tokenAddress,
           actions: [
             {
               type: "FunctionCall",
               params: {
                 methodName: "storage_deposit",
                 args: {
-                  account_id: data.payment.address,
+                  account_id: payment.address,
                   registration_only: true,
                 } as any,
                 gas,
@@ -211,7 +257,6 @@ export default function PaymentsPage() {
         });
       }
 
-      console.log("Payments calls", calls);
       await signAndSendTransactions({
         transactions: calls.map((call) => ({
           receiverId: call.receiverId!,
@@ -235,7 +280,7 @@ export default function PaymentsPage() {
               steps={[
                 {
                   nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Payment" })(() => {
-                    form.trigger(["payment.address", "payment.amount", "payment.tokenSymbol", "payment.tokenAddress", "payment.tokenNetwork", "payment.tokenIcon", "payment.tokenDecimals"]).then((isValid) => {
+                    form.trigger().then((isValid) => {
                       if (isValid) {
                         return handleNext();
                       }

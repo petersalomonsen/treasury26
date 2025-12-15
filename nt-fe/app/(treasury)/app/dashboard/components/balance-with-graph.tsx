@@ -1,7 +1,7 @@
 import { TreasuryAsset } from "@/lib/api";
 import { useState, useMemo } from "react";
 import BalanceChart from "./chart";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { ArrowLeftRight, ArrowUpRightIcon, Database, Download } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useTokenBalanceHistory } from "@/hooks/use-treasury-queries";

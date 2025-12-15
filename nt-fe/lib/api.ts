@@ -305,6 +305,12 @@ export interface StorageDeposit {
   available?: string;
 }
 
+export interface StorageDepositRegistration {
+  account_id: string;
+  token_id: string;
+  is_registered: boolean;
+}
+
 /**
  * Get storage deposit for an account on a specific token contract
  * Returns the storage deposit amount required for the account to hold the token
@@ -326,5 +332,34 @@ export async function getStorageDepositIsRegistered(
   } catch (error) {
     console.error(`Error getting storage deposit is registered for ${accountId} / ${tokenId}`, error);
     return false;
+  }
+}
+
+export interface StorageDepositRequest {
+  accountId: string;
+  tokenId: string;
+}
+
+/**
+ * Get storage deposit registration status for multiple account-token pairs in a single batch request
+ * More efficient than making individual requests for each pair
+ * Re-uses individual cache entries on the backend rather than caching the full batch query
+ */
+export async function getBatchStorageDepositIsRegistered(
+  requests: StorageDepositRequest[]
+): Promise<StorageDepositRegistration[]> {
+  if (!requests || requests.length === 0) return [];
+
+  try {
+    const url = `${BACKEND_API_BASE}/token/storage-deposit/is-registered/batch`;
+
+    const response = await axios.post<StorageDepositRegistration[]>(url, {
+      requests,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error getting batch storage deposit registrations", error);
+    return [];
   }
 }

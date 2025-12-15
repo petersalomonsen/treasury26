@@ -52,7 +52,7 @@ export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ con
                                 <p className="text-xs text-muted-foreground">
                                     Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {tokenSymbol.toUpperCase()}
                                 </p>
-                                <Button variant="outline" size="sm" onClick={() => {
+                                <Button type="button" variant="secondary" size="sm" onClick={() => {
                                     setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
                                 }}>MAX</Button>
                             </>

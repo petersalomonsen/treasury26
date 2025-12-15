@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, StorageDepositRequest } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -151,6 +151,22 @@ export function useStorageDepositIsRegistered(
     queryKey: ["storageDepositIsRegistered", accountId, tokenId],
     queryFn: () => getStorageDepositIsRegistered(accountId!, tokenId!),
     enabled: !!accountId && !!tokenId,
+    staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
+  });
+}
+
+/**
+ * Query hook to get storage deposit registration status for multiple account-token pairs in a single batch request
+ * More efficient than making individual requests for each pair
+ * Re-uses individual cache entries on the backend rather than caching the full batch query
+ */
+export function useBatchStorageDepositIsRegistered(
+  requests: StorageDepositRequest[]
+) {
+  return useQuery({
+    queryKey: ["batchStorageDepositIsRegistered", requests],
+    queryFn: () => getBatchStorageDepositIsRegistered(requests),
+    enabled: requests.length > 0,
     staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
   });
 }
