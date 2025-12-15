@@ -1,9 +1,22 @@
 "use client";
 
 import { create } from "zustand";
-import { NearConnector, SignAndSendTransactionsParams, SignedMessage } from "@hot-labs/near-connect";
+import { NearConnector, SignAndSendTransactionsParams, SignedMessage, ConnectorAction } from "@hot-labs/near-connect";
 import { NEAR_TREASURY_CONFIG } from "@/constants/config";
 import { EventMap, FinalExecutionOutcome } from "@hot-labs/near-connect/build/types";
+
+export interface CreateProposalParams {
+    treasuryId: string;
+    proposal: {
+        description: string;
+        kind: any;
+    };
+    proposalBond: string;
+    additionalTransactions?: Array<{
+        receiverId: string;
+        actions: ConnectorAction[];
+    }>;
+}
 
 interface NearStore {
     connector: NearConnector | null;
@@ -14,6 +27,7 @@ interface NearStore {
     disconnect: () => Promise<void>;
     signMessage: (message: string) => Promise<{ signatureData: SignedMessage; signedData: string }>;
     signAndSendTransactions: (params: SignAndSendTransactionsParams) => Promise<Array<FinalExecutionOutcome>>;
+    createProposal: (params: CreateProposalParams) => Promise<Array<FinalExecutionOutcome>>;
 }
 
 export const useNearStore = create<NearStore>((set, get) => ({
@@ -100,6 +114,43 @@ export const useNearStore = create<NearStore>((set, get) => ({
         const wallet = await connector.wallet();
         return wallet.signAndSendTransactions(params);
     },
+
+    createProposal: async (params: CreateProposalParams) => {
+        const { connector } = get();
+        if (!connector) {
+            throw new Error("Connector not initialized");
+        }
+
+        const gas = "270000000000000";
+
+        const proposalTransaction = {
+            receiverId: params.treasuryId,
+            actions: [
+                {
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "add_proposal",
+                        args: {
+                            proposal: params.proposal,
+                        },
+                        gas,
+                        deposit: params.proposalBond,
+                    },
+                } as ConnectorAction,
+            ],
+        };
+
+        const transactions = [
+            proposalTransaction,
+            ...(params.additionalTransactions || []),
+        ];
+
+        const wallet = await connector.wallet();
+        return wallet.signAndSendTransactions({
+            transactions,
+            network: "mainnet",
+        });
+    },
 }));
 
 // Convenience hook matching your existing API
@@ -112,6 +163,7 @@ export const useNear = () => {
         disconnect,
         signMessage,
         signAndSendTransactions,
+        createProposal,
     } = useNearStore();
 
     return {
@@ -122,5 +174,6 @@ export const useNear = () => {
         disconnect,
         signMessage,
         signAndSendTransactions,
+        createProposal,
     };
 };

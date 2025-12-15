@@ -18,7 +18,6 @@ import { encodeToMarkdown, formatTimestamp, toBase64 } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ConnectorAction } from "@hot-labs/near-connect";
 import Big from "big.js";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
@@ -194,7 +193,7 @@ function Step3({ handleBack }: StepProps) {
 
 export default function VestingPage() {
   const { selectedTreasury } = useTreasury();
-  const { signAndSendTransactions } = useNear();
+  const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -224,7 +223,6 @@ export default function VestingPage() {
         notes: data.vesting.memo || "",
       }
       const proposalBond = policy?.proposal_bond || "0";
-      const gas = "270000000000000";
       const deposit = Big(data.vesting.amount)
         .mul(Big(10).pow(data.vesting.token.decimals))
         .toFixed();
@@ -245,53 +243,38 @@ export default function VestingPage() {
           ).toString(),
         };
 
-      const action: ConnectorAction =
-      {
-        type: "FunctionCall",
-        params: {
-          methodName: "add_proposal",
-          args: {
-            proposal: {
-              description: encodeToMarkdown(description),
-              kind: {
-                FunctionCall: {
-                  receiver_id: "lockup.near",
-                  actions: [
-                    {
-                      method_name: "create",
-                      args: toBase64(
-                        data.vesting.allowEarn
-                          ? {
-                            lockup_duration: "0",
-                            owner_account_id: data.vesting.address,
-                            ...vestingArgs,
-                          }
-                          : {
-                            lockup_duration: "0",
-                            owner_account_id: data.vesting.address,
-                            whitelist_account_id: "lockup-no-whitelist.near",
-                            ...vestingArgs,
-                          }
-                      ),
-                      deposit,
-                      gas: "150000000000000",
-                    },
-                  ],
+      await createProposal({
+        treasuryId: selectedTreasury!,
+        proposal: {
+          description: encodeToMarkdown(description),
+          kind: {
+            FunctionCall: {
+              receiver_id: "lockup.near",
+              actions: [
+                {
+                  method_name: "create",
+                  args: toBase64(
+                    data.vesting.allowEarn
+                      ? {
+                        lockup_duration: "0",
+                        owner_account_id: data.vesting.address,
+                        ...vestingArgs,
+                      }
+                      : {
+                        lockup_duration: "0",
+                        owner_account_id: data.vesting.address,
+                        whitelist_account_id: "lockup-no-whitelist.near",
+                        ...vestingArgs,
+                      }
+                  ),
+                  deposit,
+                  gas: "150000000000000",
                 },
-              },
+              ],
             },
           },
-          gas,
-          deposit: proposalBond
         },
-      };
-
-      await signAndSendTransactions({
-        transactions: [{
-          receiverId: selectedTreasury!,
-          actions: [action],
-        }],
-        network: "mainnet",
+        proposalBond,
       });
     } catch (error) {
       console.error("Vesting error", error);

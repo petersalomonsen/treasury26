@@ -163,7 +163,7 @@ type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 
 export default function PaymentsPage() {
   const { selectedTreasury } = useTreasury();
-  const { signAndSendTransactions } = useNear();
+  const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -182,7 +182,7 @@ export default function PaymentsPage() {
 
   const onSubmit = async (data: PaymentFormValues) => {
     setIsSubmitting(true);
-    if (data.payments.length > 0) {
+    if (data.payments.length > 1) {
       alert("Batch payments are not supported yet");
       return;
     }
@@ -193,43 +193,19 @@ export default function PaymentsPage() {
         title: "Payment Request",
         notes: payment.memo || "",
       }
-      const deposit = policy?.proposal_bond || 0;
+      const proposalBond = policy?.proposal_bond || "0";
       const gas = "270000000000000";
 
-      const calls = [
-        {
-          receiverId: selectedTreasury,
-          actions: [
-            {
-              type: "FunctionCall",
-              params: {
-                methodName: "add_proposal",
-                args: {
-                  proposal: {
-                    description: encodeToMarkdown(description),
-                    kind: {
-                      Transfer: {
-                        token_id: isNEAR ? "" : data.token.address,
-                        receiver_id: payment.address,
-                        amount: Big(payment.amount).mul(Big(10).pow(data.token.decimals)).toFixed(),
-                      },
-                    },
-                  },
-                },
-                gas,
-                deposit,
-              },
-            },
-          ],
-        },
-      ];
-      const needsStorageDeposit =
-        !payment.isRegistered &&
-        !isNEAR
+      const additionalTransactions: Array<{
+        receiverId: string;
+        actions: ConnectorAction[];
+      }> = [];
+
+      const needsStorageDeposit = !payment.isRegistered && !isNEAR;
 
       if (needsStorageDeposit) {
         const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
-        calls.push({
+        additionalTransactions.push({
           receiverId: data.token.address,
           actions: [
             {
@@ -243,17 +219,25 @@ export default function PaymentsPage() {
                 gas,
                 deposit: depositInYocto,
               },
-            },
+            } as ConnectorAction,
           ],
         });
       }
 
-      await signAndSendTransactions({
-        transactions: calls.map((call) => ({
-          receiverId: call.receiverId!,
-          actions: call.actions as ConnectorAction[],
-        })),
-        network: "mainnet",
+      await createProposal({
+        treasuryId: selectedTreasury!,
+        proposal: {
+          description: encodeToMarkdown(description),
+          kind: {
+            Transfer: {
+              token_id: isNEAR ? "" : data.token.address,
+              receiver_id: payment.address,
+              amount: Big(payment.amount).mul(Big(10).pow(data.token.decimals)).toFixed(),
+            },
+          },
+        },
+        proposalBond,
+        additionalTransactions,
       });
     } catch (error) {
       console.error("Payments error", error);
