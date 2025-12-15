@@ -10,6 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
 import { formatBalance } from "@/lib/utils";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
@@ -21,6 +22,8 @@ type TimePeriod = "1H" | "1D" | "1W" | "1M" | "1Y" | "All";
 const TIME_PERIODS: TimePeriod[] = ["1D", "1W", "1M", "1Y"];
 
 export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
+    const params = useParams();
+    const treasuryId = params?.treasuryId as string | undefined;
     const { selectedTreasury: accountId } = useTreasury();
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
@@ -73,7 +76,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Button><Download className="size-4" /> Deposit</Button>
-                <Link href="/app/payments" className="flex"> <Button className="w-full"><ArrowUpRightIcon className="size-4" />Send</Button></Link>
+                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex"> <Button className="w-full"><ArrowUpRightIcon className="size-4" />Send</Button></Link>
                 <Button><ArrowLeftRight className="size-4" /> Exchange</Button>
                 <Button><Database className="size-4" /> Earn</Button>
             </div>

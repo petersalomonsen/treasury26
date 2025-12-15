@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { TreasurySelector } from "./treasury-selector";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -21,15 +21,15 @@ import {
   Database,
 } from "lucide-react";
 
-const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/app", label: "Dashboard", icon: PanelsTopLeft },
-  { href: "/app/requests", label: "Requests", icon: Send },
-  { href: "/app/payments", label: "Payments", icon: CreditCard },
-  { href: "/app/exchange", label: "Exchange", icon: ArrowLeftRight },
-  { href: "/app/earn", label: "Earn", icon: Layers },
-  { href: "/app/vesting", label: "Vesting", icon: Clock },
-  { href: "/app/members", label: "Members", icon: Users },
-  { href: "/app/settings", label: "Settings", icon: Settings },
+const navLinks: { path: string; label: string; icon: LucideIcon }[] = [
+  { path: "", label: "Dashboard", icon: PanelsTopLeft },
+  { path: "requests", label: "Requests", icon: Send },
+  { path: "payments", label: "Payments", icon: CreditCard },
+  { path: "exchange", label: "Exchange", icon: ArrowLeftRight },
+  { path: "earn", label: "Earn", icon: Layers },
+  { path: "vesting", label: "Vesting", icon: Clock },
+  { path: "members", label: "Members", icon: Users },
+  { path: "settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -39,6 +39,8 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const params = useParams();
+  const treasuryId = params?.treasuryId as string | undefined;
 
   return (
     <>
@@ -75,13 +77,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="flex-1 space-y-1 p-4">
           {navLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href;
-            const showBadge = link.href === "/app/requests";
+            const href = treasuryId ? `/${treasuryId}${link.path ? `/${link.path}` : ''}` : `/${link.path ? `/${link.path}` : ''}`;
+            const isActive = pathname === href;
+            const showBadge = link.path === "requests";
 
             return (
               <Link
-                key={link.href}
-                href={link.href}
+                key={link.path}
+                href={href}
                 onClick={onClose}
                 className={cn(
                   "flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
@@ -108,7 +111,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="p-4">
           <Link
-            href="/app/help"
+            href={treasuryId ? `/${treasuryId}/help` : "/help"}
             onClick={onClose}
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >

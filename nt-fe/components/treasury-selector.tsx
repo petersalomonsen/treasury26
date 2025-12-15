@@ -11,22 +11,33 @@ import {
 import { useTreasury } from "@/stores/treasury-store";
 import { Database } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useUserTreasuries } from "@/hooks/use-treasury-queries";
 
 export function TreasurySelector() {
-  const { selectedTreasury, setSelectedTreasury } = useTreasury();
-  const { accountId, } = useNear();
+  const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
+  const { setSelectedTreasury } = useTreasury();
+  const { accountId } = useNear();
 
   const { data: treasuries = [], isLoading } = useUserTreasuries(accountId);
 
-  const currentTreasury = treasuries.find(t => t.daoId === selectedTreasury);
+  const treasuryId = params?.treasuryId as string | undefined;
+  const currentTreasury = treasuries.find(t => t.daoId === treasuryId);
 
   React.useEffect(() => {
-    if (treasuries.length > 0 && !selectedTreasury) {
-      setSelectedTreasury(treasuries[0].daoId);
+    if (treasuryId) {
+      setSelectedTreasury(treasuryId);
     }
-  }, [treasuries]);
+  }, [treasuryId, setSelectedTreasury]);
+
+  React.useEffect(() => {
+    if (treasuries.length > 0 && !treasuryId) {
+      router.push(`/${treasuries[0].daoId}`);
+    }
+  }, [treasuries, treasuryId, router]);
 
   if (isLoading) {
     return (
@@ -54,8 +65,13 @@ export function TreasurySelector() {
     return treasury.config?.name || treasury.daoId;
   };
 
+  const handleTreasuryChange = (newTreasuryId: string) => {
+    const pathAfterTreasury = pathname?.split('/').slice(2).join('/') || '';
+    router.push(`/${newTreasuryId}/${pathAfterTreasury}`);
+  };
+
   return (
-    <Select value={selectedTreasury} onValueChange={setSelectedTreasury} >
+    <Select value={treasuryId} onValueChange={handleTreasuryChange} >
       <SelectTrigger className="w-full px-2.5 py-2 border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted! h-14!">
         <div className="flex items-center gap-2 w-full ">
           <div className="flex items-center justify-center w-7 h-7 rounded shrink-0">
