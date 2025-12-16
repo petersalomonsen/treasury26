@@ -69,7 +69,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                         </SelectContent>
                     </Select>
                     <ToggleGroup type="single" size="sm" variant={"outline"} value={selectedPeriod} onValueChange={(e) => setSelectedPeriod(e as TimePeriod)}>
-                        {TIME_PERIODS.map((e => <ToggleGroupItem value={e}>{e}</ToggleGroupItem>))}
+                        {TIME_PERIODS.map((e => <ToggleGroupItem key={e} value={e}>{e}</ToggleGroupItem>))}
                     </ToggleGroup>
                 </div>
             </div>
