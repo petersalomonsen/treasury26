@@ -301,7 +301,7 @@ export function DateTimePicker({
                             {showCalendarIcon && (
                                 <Calendar className="mr-2 size-4 text-muted-foreground" />
                             )}
-                            <span className="font-medium text-muted-foreground">{dislayFormat}</span>
+                            <span className={cn("font-mediu text-muted-foreground", displayValue && 'text-primary')}>{dislayFormat}</span>
                         </div>
                         {clearable && value && (
                             <Button
