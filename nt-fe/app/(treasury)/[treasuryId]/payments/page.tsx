@@ -59,7 +59,7 @@ function Step1() {
       <StepperHeader title="New Payment" />
       {fields.map((field, index) => (
         <Fragment key={field.id}>
-          <TokenInput key={field.id} tokenSelect={{ disabled: index > 0 }} control={form.control} amountName={`payments.${index}.amount`} tokenName={`token`} />
+          <TokenInput title="You send" key={field.id} tokenSelect={{ disabled: index > 0 }} control={form.control} amountName={`payments.${index}.amount`} tokenName={`token`} />
           <RecipientInput control={form.control} name={`payments.${index}.address`} />
           {fields.length > 1 && (
             <div className="flex justify-end">
