@@ -8,9 +8,12 @@ import { ProposalSidebar } from "./common/proposal-sidebar";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
 import { Copy, ExternalLink, MoreHorizontal } from "lucide-react";
+import { TxDetails } from "./common/tx-details";
+import { Policy } from "@/types/policy";
 
 interface ExpandedViewProps {
   proposal: Proposal;
+  policy: Policy;
 }
 
 // Helper to check if it's a vesting transaction
@@ -23,7 +26,7 @@ function isVestingProposal(proposal: Proposal): boolean {
   return isLockup && firstAction?.method_name === 'create';
 }
 
-function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
+function ExpandedViewInternal({ proposal, policy }: ExpandedViewProps) {
   if (isVestingProposal(proposal)) {
     return <VestingExpanded proposal={proposal} />;
   }
@@ -45,8 +48,8 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
   }
 }
 
-export function ExpandedView({ proposal }: ExpandedViewProps) {
-  const component = ExpandedViewInternal({ proposal });
+export function ExpandedView({ proposal, policy }: ExpandedViewProps) {
+  const component = ExpandedViewInternal({ proposal, policy });
 
   return (
     <div className="flex w-full gap-4">
@@ -68,6 +71,8 @@ export function ExpandedView({ proposal }: ExpandedViewProps) {
           </div>
           {component}
         </PageCard>
+
+        <TxDetails proposal={proposal} policy={policy} />
       </div>
       <div className="w-3/5">
         <ProposalSidebar proposal={proposal} />

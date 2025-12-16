@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Proposal, ProposalStatus } from "@/lib/proposals-api";
 import {
   Table,
@@ -16,9 +16,12 @@ import { TransactionCell } from "./transaction-cell";
 import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
+import { Policy } from "@/types/policy";
+import { formatDate } from "@/lib/utils";
 
 interface ProposalsTableProps {
   proposals: Proposal[];
+  policy: Policy;
 }
 
 function getStatusColor(status: ProposalStatus): string {
@@ -67,22 +70,7 @@ function getProposalTitle(description: string): string {
   return firstLine.length > 60 ? firstLine.substring(0, 60) + '...' : firstLine;
 }
 
-// Extract date from submission_time
-function formatProposalDate(submission_time: string): string {
-  const date = new Date(parseInt(submission_time) / 1000000);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  const month = date.toLocaleString('default', { month: 'short' });
-  const day = date.getDate();
-  const year = date.getFullYear();
-  const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-  return `${month} ${day}, ${year} ${time}`;
-}
-
-export function ProposalsTable({ proposals }: ProposalsTableProps) {
+export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
 
@@ -161,12 +149,11 @@ export function ProposalsTable({ proposals }: ProposalsTableProps) {
           const isExpanded = expandedRows.has(proposal.id);
           const isSelected = selectedRows.has(proposal.id);
           const title = getProposalTitle(proposal.description);
-          const date = formatProposalDate(proposal.submission_time);
+          const date = formatDate(new Date(parseInt(proposal.submission_time) / 1000000));
 
           return (
-            <>
+            <Fragment key={proposal.id}>
               <TableRow
-                key={proposal.id}
                 className={`${isSelected ? 'bg-muted/30' : ''} cursor-pointer`}
               >
                 <TableCell>
@@ -233,12 +220,12 @@ export function ProposalsTable({ proposals }: ProposalsTableProps) {
                 <TableRow>
                   <TableCell colSpan={7} className="p-0 bg-muted/5">
                     <div className="px-14 py-4">
-                      <ExpandedView proposal={proposal} />
+                      <ExpandedView proposal={proposal} policy={policy} />
                     </div>
                   </TableCell>
                 </TableRow>
               )}
-            </>
+            </Fragment>
           );
         })}
       </TableBody>

@@ -14,12 +14,11 @@ import { Form, FormField } from "@/components/ui/form";
 import { Textarea } from "@/components/textarea";
 import { NEAR_TOKEN } from "@/constants/token";
 import { useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { encodeToMarkdown, formatTimestamp, toBase64 } from "@/lib/utils";
+import { encodeToMarkdown, formatDate, formatTimestamp, toBase64 } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Big from "big.js";
-import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";
@@ -63,7 +62,7 @@ const vestingFormSchema = z.object({
       ctx.addIssue({
         code: "custom",
         path: [`vesting.cliffDate`],
-        message: `Cliff date must be between ${format(data.vesting.startDate, "MM/dd/yyyy")} and ${format(data.vesting.endDate, "MM/dd/yyyy")}`,
+        message: `Cliff date must be between ${formatDate(data.vesting.startDate)} and ${formatDate(data.vesting.endDate)}`,
       });
     }
 
@@ -148,15 +147,15 @@ function Step3({ handleBack }: StepProps) {
       },
       {
         label: "Start Date",
-        value: format(vesting.startDate, "MM/dd/yyyy"),
+        value: formatDate(vesting.startDate),
       },
       {
         label: "End Date",
-        value: format(vesting.endDate, "MM/dd/yyyy"),
+        value: formatDate(vesting.endDate),
       },
       {
         label: "Cliff Date",
-        value: vesting.cliffDate ? format(vesting.cliffDate, "MM/dd/yyyy") : "N/A",
+        value: vesting.cliffDate ? formatDate(vesting.cliffDate) : "N/A",
       },
       {
         label: 'Cancelable',

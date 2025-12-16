@@ -19,7 +19,7 @@ export function InfoDisplay({ title, items, className }: InfoDisplayProps) {
             {items.map((item, index) => (
                 <div key={index} className="flex justify-between items-center border-b border-border pb-4 last:border-b-0 last:pb-0">
                     <p className="text-sm text-muted-foreground">{item.label}</p>
-                    <p className="text-sm text-muted-foreground">{item.value}</p>
+                    <div className="text-sm text-muted-foreground">{item.value}</div>
                 </div>
             ))}
         </div>

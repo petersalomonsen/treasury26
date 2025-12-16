@@ -12,9 +12,11 @@ import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Filter, Download } from "lucide-react";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
+  const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -64,7 +66,9 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <ProposalsTable proposals={data.proposals} />
+      {policy && (
+        <ProposalsTable proposals={data.proposals} policy={policy} />
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-4">

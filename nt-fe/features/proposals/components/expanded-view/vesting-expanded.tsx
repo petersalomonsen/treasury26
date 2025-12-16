@@ -1,15 +1,9 @@
 import { Proposal } from "@/lib/proposals-api";
 import { InfoDisplay } from "@/components/info-display";
-import { formatNearAmount, decodeArgs } from "@/lib/utils";
+import { formatNearAmount, decodeArgs, formatDate } from "@/lib/utils";
 
 interface VestingExpandedProps {
   proposal: Proposal;
-}
-
-// Helper to format date from nanosecond timestamp
-function formatDate(timestamp: string): string {
-  const date = new Date(parseInt(timestamp) / 1000000);
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 export function VestingExpanded({ proposal }: VestingExpandedProps) {
@@ -55,9 +49,9 @@ export function VestingExpanded({ proposal }: VestingExpandedProps) {
 
   if (vestingSchedule) {
     infoItems.push(
-      { label: "Start Date", value: formatDate(vestingSchedule.start_timestamp) },
-      { label: "End Date", value: formatDate(vestingSchedule.end_timestamp) },
-      { label: "Cliff Date", value: formatDate(vestingSchedule.cliff_timestamp) }
+      { label: "Start Date", value: formatDate(parseInt(vestingSchedule.start_timestamp) / 1000000) },
+      { label: "End Date", value: formatDate(parseInt(vestingSchedule.end_timestamp) / 1000000) },
+      { label: "Cliff Date", value: formatDate(parseInt(vestingSchedule.cliff_timestamp) / 1000000) }
     );
   }
 

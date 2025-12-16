@@ -1,5 +1,6 @@
 import Big from "big.js";
 import { clsx, type ClassValue } from "clsx"
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -15,6 +16,14 @@ export function formatTimestamp(date: Date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d.getTime() * 1000000;
+}
+
+export function formatDate(date: Date | string | number) {
+  if (!date) return "";
+  if (typeof date === "string") {
+    date = new Date(date);
+  }
+  return format(date, "MM/dd/yyyy");
 }
 
 
