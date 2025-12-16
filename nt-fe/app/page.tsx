@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/button";
 
+
+
 export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -12,7 +14,7 @@ export default function Home() {
   useEffect(() => {
     const fetchMessage = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:3002");
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api/health`);
         if (!response.ok) {
           throw new Error("Failed to fetch");
         }
@@ -59,7 +61,7 @@ export default function Home() {
         </div>
 
         <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-md text-center">
-          This page fetches data from the Axum backend running on http://127.0.0.1:3002
+          This page fetches data from the Axum backend running on {process.env.NEXT_PUBLIC_BACKEND_API_BASE}
         </p>
 
         <Link href="/app">
