@@ -1,0 +1,34 @@
+services:
+  # Backend Service (Rust/Axum)
+  - type: web
+    name: near-treasury-backend
+    runtime: rust
+    plan: starter
+    rootDir: nt-be
+    buildCommand: cargo build --release
+    startCommand: ./target/release/nf-be
+    envVars:
+      - key: PIKESPEAK_KEY
+        sync: false
+      - key: FASTNEAR_API_KEY
+        sync: false
+      - key: RUST_LOG
+        value: info
+      - key: PORT
+        value: 10000
+    healthCheckPath: /api/health
+
+  # Frontend Service (Next.js)
+  - type: web
+    name: near-treasury-frontend
+    runtime: node
+    plan: starter
+    rootDir: nt-fe
+    buildCommand: bun install && bun run build
+    startCommand: node .next/standalone/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_BACKEND_API_BASE
+        sync: false
+    healthCheckPath: /
