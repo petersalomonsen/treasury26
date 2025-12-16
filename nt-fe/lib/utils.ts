@@ -31,6 +31,24 @@ export function formatBalance(balance: string | Big, decimals: number, displayDe
   );
 }
 
+export function formatNearAmount(amount: string, displayDecimals: number = 5): string {
+  return formatBalance(amount, 24, displayDecimals);
+}
+
+/**
+ * Decodes base64 encoded function call arguments
+ * @param args - Base64 encoded string
+ * @returns Parsed JSON object or null if decoding fails
+ */
+export function decodeArgs(args: string): any {
+  try {
+    const decoded = atob(args);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
 
 /**
  * Parse key to readable format (snake_case/camelCase -> Title Case)

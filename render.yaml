@@ -12,6 +12,8 @@ services:
         sync: false
       - key: FASTNEAR_API_KEY
         sync: false
+      - key: SPUTNIK_DAO_API_BASE
+        sync: false
       - key: RUST_LOG
         value: info
       - key: PORT

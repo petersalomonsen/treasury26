@@ -57,5 +57,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/user/assets",
             get(handlers::user::assets::get_user_assets),
         )
+        // Proposals endpoints
+        .route(
+            "/api/proposals/{dao_id}",
+            get(handlers::proposals::get_proposals::get_proposals),
+        )
         .with_state(state)
 }
