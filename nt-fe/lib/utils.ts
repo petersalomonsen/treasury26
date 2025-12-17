@@ -39,7 +39,7 @@ export function formatBalance(balance: string | Big, decimals: number, displayDe
     parsedBalance = balance;
   }
   return (
-    parsedBalance.div(Big(10).pow(decimals)).toFixed(displayDecimals)
+    parsedBalance.div(Big(10).pow(decimals)).toFixed(displayDecimals).replace(/\.?0+$/, "")
   );
 }
 

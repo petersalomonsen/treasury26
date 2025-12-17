@@ -25,7 +25,7 @@ export function PageComponentLayout({ title, description, children }: PageCompon
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between bg-header-bg p-2 px-6 border-b border-border">
+      <header className="flex items-center justify-between bg-header-bg p-1 px-6 border-b border-border">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -66,7 +66,7 @@ export function PageComponentLayout({ title, description, children }: PageCompon
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto bg-page-bg p-8">
+      <main className="flex-1 overflow-y-auto bg-page-bg p-4">
         {children}
       </main>
     </div>

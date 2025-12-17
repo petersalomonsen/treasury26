@@ -72,18 +72,18 @@ export function TreasurySelector() {
 
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >
-      <SelectTrigger className="w-full px-2.5 py-2 border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted! h-14!">
-        <div className="flex items-center gap-2 w-full ">
+      <SelectTrigger className="w-44 px-2.5 py-2 border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted! h-14!">
+        <div className="flex items-center gap-2 w-full max-w-36 truncate">
           <div className="flex items-center justify-center w-7 h-7 rounded shrink-0">
             <Database className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <div className="flex flex-col items-start flex-1 min-w-0">
-            <span className="text-sm font-medium truncate max-w-full leading-snug">
+            <span className="text-xs font-medium truncate max-w-full leading-snug">
               {currentTreasury ? getTreasuryName(currentTreasury) : "Select treasury"}
             </span>
             {currentTreasury && (
               <span className="text-xs text-muted-foreground leading-none">
-                {currentTreasury.daoId}
+                {currentTreasury.daoId.slice(0, 10)}...
               </span>
             )}
           </div>

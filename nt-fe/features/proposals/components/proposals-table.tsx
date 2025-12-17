@@ -145,7 +145,7 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
                   </div>
                 </TableCell>
 
-                <TableCell>
+                <TableCell className="max-w-[200px] truncate">
                   <TransactionCell proposal={proposal} />
                 </TableCell>
 
