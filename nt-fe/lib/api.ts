@@ -419,3 +419,58 @@ export async function getLockupPool(
     return null;
   }
 }
+
+export interface ProfileData {
+  name?: string;
+  image?: string;
+  backgroundImage?: string;
+  description?: string;
+  linktree?: any;
+  tags?: any;
+}
+
+/**
+ * Get profile data from NEAR Social for a single account
+ * Fetches from backend which queries social.near contract
+ */
+export async function getProfile(
+  accountId: string
+): Promise<ProfileData | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/user/profile`;
+
+    const response = await axios.get<ProfileData>(url, {
+      params: { accountId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting profile for ${accountId}`, error);
+    return null;
+  }
+}
+
+/**
+ * Get profile data from NEAR Social for multiple accounts in a single batch request
+ * More efficient than making individual requests for each account
+ */
+export async function getBatchProfiles(
+  accountIds: string[]
+): Promise<Record<string, ProfileData>> {
+  if (!accountIds || accountIds.length === 0) return {};
+
+  try {
+    const url = `${BACKEND_API_BASE}/user/profile/batch`;
+
+    const response = await axios.get<Record<string, ProfileData>>(url, {
+      params: { accountIds: accountIds.join(',') },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error getting batch profiles", error);
+    return {};
+  }
+}

@@ -198,10 +198,6 @@ async fn fetch_period_history(
     let is_near = token_id == "near";
     let futures: Vec<_> = block_heights
         .map(|block_height| {
-            println!(
-                "{:?} - {:?} - {:?}",
-                period.name, blocks_per_step, block_height,
-            );
             let state = state.clone();
             let account_id = account_id.clone();
             let token_id = token_id.clone();

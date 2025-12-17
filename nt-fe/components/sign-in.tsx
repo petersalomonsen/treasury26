@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { LogIn, LogOut, User, ChevronDown } from "lucide-react";
+import { LogIn, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/button";
 import { useNear } from "@/stores/near-store";
 import { useRouter } from "next/navigation";
+import { User } from "./user";
 
 export function SignIn() {
   const { accountId: signedAccountId, isInitializing, connect, disconnect } = useNear();
@@ -44,10 +45,7 @@ export function SignIn() {
         className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-muted cursor-pointer"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
       >
-        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-          <User className="h-4 w-4 text-white" />
-        </div>
-        <span className="text-sm font-medium hidden sm:inline">{displayName}</span>
+        <User accountId={signedAccountId} withLink={false} size="md" />
         <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:inline" />
       </div>
 

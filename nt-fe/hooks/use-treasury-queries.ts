@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, getLockupPool, StorageDepositRequest } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, getLockupPool, getProfile, getBatchProfiles, StorageDepositRequest } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -199,5 +199,33 @@ export function useLockupPool(accountId: string | null | undefined) {
     queryFn: () => getLockupPool(accountId!),
     enabled: !!accountId,
     staleTime: 1000 * 60 * 10, // 10 minutes (lockup pool associations don't change frequently)
+  });
+}
+
+/**
+ * Query hook to get profile data from NEAR Social for a single account
+ * Fetches profile information including name, image, description, etc.
+ * Data is cached on the backend from social.near contract
+ */
+export function useProfile(accountId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["profile", accountId],
+    queryFn: () => getProfile(accountId!),
+    enabled: !!accountId,
+    staleTime: 1000 * 60 * 10, // 10 minutes (profile data doesn't change frequently)
+  });
+}
+
+/**
+ * Query hook to get profile data from NEAR Social for multiple accounts in a single batch request
+ * More efficient than making individual requests for each account
+ * Returns a record/object mapping account IDs to their profile data
+ */
+export function useBatchProfiles(accountIds: string[]) {
+  return useQuery({
+    queryKey: ["batchProfiles", accountIds],
+    queryFn: () => getBatchProfiles(accountIds),
+    enabled: accountIds.length > 0,
+    staleTime: 1000 * 60 * 10, // 10 minutes (profile data doesn't change frequently)
   });
 }

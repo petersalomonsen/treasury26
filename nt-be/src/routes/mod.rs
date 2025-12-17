@@ -61,6 +61,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/user/assets",
             get(handlers::user::assets::get_user_assets),
         )
+        .route(
+            "/api/user/profile",
+            get(handlers::user::profile::get_profile),
+        )
+        .route(
+            "/api/user/profile/batch",
+            get(handlers::user::profile::get_batch_profiles),
+        )
         // Proposals endpoints
         .route(
             "/api/proposals/{dao_id}",
