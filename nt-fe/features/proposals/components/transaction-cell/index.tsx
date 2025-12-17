@@ -5,6 +5,7 @@ import { TokenCell } from "./token-cell";
 import { decodeArgs } from "@/lib/utils";
 import { getProposalType } from "../../utils/proposal-utils";
 import { fetchTransferFromDirect, fetchTransferFromFT } from "../expanded-view/transfer-expanded";
+import { StakingCell } from "./staking-cell";
 
 interface TransactionCellProps {
   proposal: Proposal;
@@ -31,6 +32,8 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
       return <FunctionCallCell proposal={proposal} />;
     case "Change Policy":
       return <ChangePolicyCell proposal={proposal} />;
+    case "Staking":
+      return <StakingCell proposal={proposal} />;
     case "Vesting":
       if (!('FunctionCall' in proposal.kind)) return null;
       const functionCall = proposal.kind.FunctionCall;

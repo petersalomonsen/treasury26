@@ -5,7 +5,7 @@ import { Coins } from "lucide-react";
 interface TokenCellProps {
   tokenId: string;
   amount: string;
-  receiver: string;
+  receiver?: string | null;
 }
 
 export function TokenCell({ tokenId, amount, receiver }: TokenCellProps) {
@@ -20,7 +20,8 @@ export function TokenCell({ tokenId, amount, receiver }: TokenCellProps) {
         {icon}
         <span className="font-medium">{formatBalance(amount, tokenData?.decimals || 24)} {tokenData?.symbol || "NEAR"}</span>
       </div>
-      <span className="text-xs text-muted-foreground">To: {receiver}</span>
+
+      {receiver && <span className="text-xs text-muted-foreground">To: {receiver}</span>}
     </div>
   );
 }

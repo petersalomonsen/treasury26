@@ -1,11 +1,9 @@
 import { Proposal } from "@/lib/proposals-api";
-import { InfoDisplay } from "@/components/info-display";
-import { formatNearAmount, decodeArgs, formatDate, decodeProposalDescription } from "@/lib/utils";
-import { NEAR_TOKEN } from "@/constants/token";
-import { useTokenPrice } from "@/hooks/use-treasury-queries";
-import { useMemo } from "react";
+import { InfoDisplay, InfoItem } from "@/components/info-display";
+import { decodeArgs, formatDate, decodeProposalDescription } from "@/lib/utils";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
 import { Amount } from "../amount";
+import { User } from "@/components/user";
 
 interface VestingExpandedProps {
   proposal: Proposal;
@@ -13,13 +11,11 @@ interface VestingExpandedProps {
 
 export function VestingExpanded({ proposal }: VestingExpandedProps) {
   if (!('FunctionCall' in proposal.kind)) return null;
-  const { data: usdPrice } = useTokenPrice("near", "NEAR");
-
   const functionCall = proposal.kind.FunctionCall;
   const receiver = functionCall.receiver_id;
 
   // Check if this is a vesting transaction (create on lockup.near)
-  const isVesting = receiver.includes('lockup.near') || receiver === 'lockup.near';
+  const isVesting = receiver.endsWith('lockup.near');
   if (!isVesting) return null;
 
   const firstAction = functionCall.actions[0];
@@ -32,20 +28,12 @@ export function VestingExpanded({ proposal }: VestingExpandedProps) {
   const whitelistAccountId = args.whitelist_account_id;
   const foundationAccountId = args.foundation_account_id;
   const recipient = args.owner_account_id;
-  const nearAmount = formatNearAmount(firstAction.deposit);
 
-  const estimatedUSDValue = useMemo(() => {
-    if (!usdPrice?.price || !firstAction.deposit || isNaN(Number(firstAction.deposit))) {
-      return 0;
-    }
-    return Number(nearAmount) * usdPrice.price;
-  }, [usdPrice?.price, firstAction.deposit]);
-
-  const infoItems = [
-    { label: "Recipient", value: recipient || "N/A" },
+  const infoItems: InfoItem[] = [
+    { label: "Recipient", value: <User accountId={recipient || ""} /> },
     {
       label: "Amount",
-      value: <Amount amount={nearAmount} tokenId="near" />
+      value: <Amount amount={firstAction.deposit} tokenId="near" />
     },
   ];
 

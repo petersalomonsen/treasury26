@@ -1,3 +1,4 @@
+pub mod lookup;
 pub mod proposals;
 pub mod token;
 pub mod treasury;

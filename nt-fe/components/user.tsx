@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 interface UserProps {
     accountId: string;
     iconOnly?: boolean;
@@ -5,7 +7,7 @@ interface UserProps {
 
 export function User({ accountId, iconOnly = false }: UserProps) {
     return (
-        <div className="flex items-center gap-2">
+        <Link href={`https://nearblocks.io/address/${accountId}`} target="_blank" className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
                 {accountId.charAt(0).toUpperCase()}
             </div>
@@ -15,6 +17,6 @@ export function User({ accountId, iconOnly = false }: UserProps) {
                     <span className="text-xs text-muted-foreground">{accountId}</span>
                 </div>
             )}
-        </div>
+        </Link>
     )
 }

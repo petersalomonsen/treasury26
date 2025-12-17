@@ -18,6 +18,20 @@ function isFTTransferProposal(proposal: Proposal): boolean {
   return functionCall.actions.some(action => action.method_name === 'ft_transfer' || action.method_name === 'ft_transfer_call');
 }
 
+function isStakingProposal(proposal: Proposal): boolean {
+  if (!('FunctionCall' in proposal.kind)) return false;
+  const functionCall = proposal.kind.FunctionCall;
+  const isPool = functionCall.receiver_id.endsWith('poolv1.near') || functionCall.receiver_id.endsWith('lockup.near');
+  return isPool && functionCall.actions.some(action => action.method_name === 'stake' || action.method_name === 'deposit_and_stake' || action.method_name === 'deposit');
+}
+
+function isStakingWithdrawProposal(proposal: Proposal): boolean {
+  if (!('FunctionCall' in proposal.kind)) return false;
+  const functionCall = proposal.kind.FunctionCall;
+  const isPool = functionCall.receiver_id.endsWith('poolv1.near') || functionCall.receiver_id.endsWith('lockup.near');
+  return isPool && functionCall.actions.some(action => action.method_name === 'withdraw' || action.method_name === 'unstake');
+}
+
 export function getProposalType(proposal: Proposal) {
   const proposalType = getKindFromProposal(proposal.kind);
   switch (proposalType) {
@@ -29,6 +43,12 @@ export function getProposalType(proposal: Proposal) {
       }
       if (isFTTransferProposal(proposal)) {
         return "Payment Request";
+      }
+      if (isStakingProposal(proposal)) {
+        return "Staking";
+      }
+      if (isStakingWithdrawProposal(proposal)) {
+        return "Withdraw";
       }
       return "Function Call";
     case "policy":

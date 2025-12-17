@@ -13,7 +13,10 @@ export function VotingIndicator({ proposal, policy }: VotingIndicatorProps) {
   const { requiredVotes } = getApproversAndThreshold(policy, "", proposal.kind, false);
 
 
-  const total = Object.values(proposal.votes).length;
+  const total = Object.values(proposal.votes).length
+  if (isNaN(requiredVotes)) {
+    console.log(proposal);
+  }
 
   return (
     <div className="flex items-center gap-2">

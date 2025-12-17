@@ -395,3 +395,27 @@ export async function getTokenMetadata(
     return null;
   }
 }
+
+/**
+ * Get staking pool account ID for a lockup contract
+ * Fetches from backend which queries the lockup contract on the blockchain
+ * Returns the pool account ID if registered, null otherwise
+ */
+export async function getLockupPool(
+  accountId: string
+): Promise<string | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/lockup/pool`;
+
+    const response = await axios.get<string | null>(url, {
+      params: { accountId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting lockup pool for ${accountId}`, error);
+    return null;
+  }
+}

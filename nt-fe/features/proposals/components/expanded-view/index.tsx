@@ -10,6 +10,7 @@ import { Copy, ExternalLink, MoreHorizontal } from "lucide-react";
 import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
 import { getProposalType } from "../../utils/proposal-utils";
+import { StakingExpanded } from "./staking-expanded";
 
 interface ExpandedViewProps {
   proposal: Proposal;
@@ -27,6 +28,8 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
       return <ChangePolicyExpanded proposal={proposal} />;
     case "Vesting":
       return <VestingExpanded proposal={proposal} />;
+    case "Staking":
+      return <StakingExpanded proposal={proposal} />;
     default:
       return (
         <div className="p-4 bg-muted/30 rounded-lg">

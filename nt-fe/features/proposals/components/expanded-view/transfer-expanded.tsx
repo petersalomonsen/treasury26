@@ -3,6 +3,7 @@ import { Proposal } from "@/lib/proposals-api";
 import { decodeArgs, decodeProposalDescription, formatNearAmount } from "@/lib/utils";
 import { Amount } from "../amount";
 import { InfoDisplay } from "@/components/info-display";
+import { User } from "@/components/user";
 interface TransferExpandedProps {
   proposal: Proposal;
 }
@@ -22,7 +23,7 @@ export function TransferExpanded({ proposal }: TransferExpandedProps) {
   const infoItems = [
     {
       label: "Recipient",
-      value: data?.receiver
+      value: <User accountId={data?.receiver || ""} />
     },
     {
       label: "Amount",

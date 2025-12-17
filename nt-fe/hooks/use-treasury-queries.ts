@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, StorageDepositRequest } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, getLockupPool, StorageDepositRequest } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -185,5 +185,19 @@ export function useToken(
     queryFn: () => getTokenMetadata(tokenId!, network!),
     enabled: !!tokenId && !!network,
     staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
+  });
+}
+
+/**
+ * Query hook to get staking pool account ID for a lockup contract
+ * Fetches from backend which queries the lockup contract on the blockchain
+ * Returns the pool account ID if the lockup contract has a staking pool registered
+ */
+export function useLockupPool(accountId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["lockupPool", accountId],
+    queryFn: () => getLockupPool(accountId!),
+    enabled: !!accountId,
+    staleTime: 1000 * 60 * 10, // 10 minutes (lockup pool associations don't change frequently)
   });
 }

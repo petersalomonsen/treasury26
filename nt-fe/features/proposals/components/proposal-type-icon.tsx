@@ -1,4 +1,4 @@
-import { ArrowLeftRight, FileText, Shield, Send, Coins, Download, Upload, Clock, CreditCard, TerminalSquare } from "lucide-react";
+import { ArrowLeftRight, FileText, Shield, Send, Coins, Download, Upload, Clock, CreditCard, TerminalSquare, Database } from "lucide-react";
 import { Proposal } from "@/lib/proposals-api";
 import { getProposalType } from "../utils/proposal-utils";
 
@@ -33,6 +33,12 @@ export function ProposalTypeIcon({ proposal }: ProposalTypeIconProps) {
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-indigo-500/10 bg-indigo-500/30">
           <Clock className="size-5 dark:text-indigo-300 text-indigo-600" />
+        </div>
+      );
+    case "Staking":
+      return (
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-green-500/10 bg-green-500/30">
+          <Database className="size-5 dark:text-green-300 text-green-600" />
         </div>
       );
     default:

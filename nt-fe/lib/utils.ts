@@ -26,6 +26,9 @@ export function formatDate(date: Date | string | number) {
   return format(date, "MM/dd/yyyy");
 }
 
+export function formatGas(gas: string): string {
+  return `${formatBalance(gas, 12, 2)}`;
+}
 
 export function formatBalance(balance: string | Big, decimals: number, displayDecimals: number = 5): string {
 
