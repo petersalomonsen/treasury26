@@ -1,7 +1,5 @@
 "use client";
 
-import { InputBlock } from "./input-block";
-
 interface InfoItem {
     label: string;
     value: string | number | React.ReactNode;

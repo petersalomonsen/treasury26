@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, StorageDepositRequest } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, StorageDepositRequest } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -168,5 +168,22 @@ export function useBatchStorageDepositIsRegistered(
     queryFn: () => getBatchStorageDepositIsRegistered(requests),
     enabled: requests.length > 0,
     staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
+  });
+}
+
+/**
+ * Query hook to get token metadata (name, symbol, decimals, icon)
+ * Fetches from backend which queries the token contract on the blockchain
+ * Supports both NEAR and FT tokens
+ */
+export function useToken(
+  tokenId: string | null | undefined,
+  network: string | null | undefined
+) {
+  return useQuery({
+    queryKey: ["tokenMetadata", tokenId, network],
+    queryFn: () => getTokenMetadata(tokenId!, network!),
+    enabled: !!tokenId && !!network,
+    staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
   });
 }

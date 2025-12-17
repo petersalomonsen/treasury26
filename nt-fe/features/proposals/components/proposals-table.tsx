@@ -18,6 +18,9 @@ import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
 import { formatDate } from "@/lib/utils";
+import { User } from "@/components/user";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getProposalType } from "../utils/get-proposal-type";
 
 interface ProposalsTableProps {
   proposals: Proposal[];
@@ -40,8 +43,12 @@ function getStatusColor(status: ProposalStatus): string {
   }
 }
 
-function getStatusLabel(status: ProposalStatus): string {
-  switch (status) {
+function getStatusLabel(proposal: Proposal, policy: Policy): string {
+  const { proposal_period } = policy;
+  const proposalPeriod = parseInt(proposal_period);
+  const submissionTime = parseInt(proposal.submission_time);
+
+  switch (proposal.status) {
     case "Approved":
       return "Executed";
     case "Rejected":
@@ -49,25 +56,13 @@ function getStatusLabel(status: ProposalStatus): string {
     case "Failed":
       return "Rejected";
     case "InProgress":
+      if ((submissionTime + proposalPeriod) / 1_000_000 < Date.now()) {
+        return "Expired";
+      }
       return "Pending";
-    case "Expired":
-      return "Expired";
     default:
-      return status;
+      return proposal.status;
   }
-}
-
-// Extract title from description
-function getProposalTitle(description: string): string {
-  // Try to extract title from markdown description
-  const titleMatch = description.match(/\*\s*Title:\s*([^<\n]+)/i);
-  if (titleMatch) {
-    return titleMatch[1].trim();
-  }
-
-  // Fallback to first line or truncated description
-  const firstLine = description.split('\n')[0].replace(/^\*+\s*/, '').trim();
-  return firstLine.length > 60 ? firstLine.substring(0, 60) + '...' : firstLine;
 }
 
 export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
@@ -118,12 +113,10 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="w-[40px]">
-            <input
-              type="checkbox"
+          <TableHead>
+            <Checkbox
               checked={selectedRows.size === proposals.length}
-              onChange={toggleSelectAll}
-              className="h-4 w-4 rounded border-gray-300"
+              onCheckedChange={toggleSelectAll}
             />
           </TableHead>
           <TableHead className="w-[400px] text-xs font-medium uppercase text-muted-foreground">
@@ -148,7 +141,7 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
         {proposals.map((proposal) => {
           const isExpanded = expandedRows.has(proposal.id);
           const isSelected = selectedRows.has(proposal.id);
-          const title = getProposalTitle(proposal.description);
+          const title = getProposalType(proposal);
           const date = formatDate(new Date(parseInt(proposal.submission_time) / 1000000));
 
           return (
@@ -157,24 +150,20 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
                 className={`${isSelected ? 'bg-muted/30' : ''} cursor-pointer`}
               >
                 <TableCell>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={isSelected}
-                    onChange={() => toggleSelect(proposal.id)}
-                    className="h-4 w-4 rounded border-gray-300"
+                    onCheckedChange={() => toggleSelect(proposal.id)}
                   />
                 </TableCell>
 
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <ProposalTypeIcon proposal={proposal} />
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">#{proposal.id}</span>
-                        <span className="text-sm font-medium">{title}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{date}</span>
+                <TableCell className="flex items-center gap-5 max-w-[400px] truncate">
+                  <span className="text-sm text-muted-foreground w-6 shrink-0">#{proposal.id}</span>
+                  <ProposalTypeIcon proposal={proposal} />
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{title}</span>
                     </div>
+                    <span className="text-xs text-muted-foreground">{date}</span>
                   </div>
                 </TableCell>
 
@@ -183,11 +172,11 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
                 </TableCell>
 
                 <TableCell>
-                  <span className="text-sm">{proposal.proposer}</span>
+                  <User accountId={proposal.proposer} />
                 </TableCell>
 
                 <TableCell>
-                  <VotingIndicator proposal={proposal} />
+                  <VotingIndicator proposal={proposal} policy={policy} />
                 </TableCell>
 
                 <TableCell>
@@ -196,7 +185,7 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
                       proposal.status
                     )}`}
                   >
-                    {getStatusLabel(proposal.status)}
+                    {getStatusLabel(proposal, policy)}
                   </span>
                 </TableCell>
 
@@ -219,7 +208,7 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
               {isExpanded && (
                 <TableRow>
                   <TableCell colSpan={7} className="p-0 bg-muted/5">
-                    <div className="px-14 py-4">
+                    <div className="p-4">
                       <ExpandedView proposal={proposal} policy={policy} />
                     </div>
                   </TableCell>

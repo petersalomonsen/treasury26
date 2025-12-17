@@ -1,5 +1,4 @@
 import { Proposal } from "@/lib/proposals-api";
-import { getProposalType } from "../../utils/get-proposal-type";
 import { TransferExpanded } from "./transfer-expanded";
 import { FunctionCallExpanded } from "./function-call-expanded";
 import { ChangePolicyExpanded } from "./change-policy-expanded";
@@ -10,35 +9,24 @@ import { Button } from "@/components/button";
 import { Copy, ExternalLink, MoreHorizontal } from "lucide-react";
 import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
+import { getProposalType } from "../../utils/get-proposal-type";
 
 interface ExpandedViewProps {
   proposal: Proposal;
   policy: Policy;
 }
 
-// Helper to check if it's a vesting transaction
-function isVestingProposal(proposal: Proposal): boolean {
-  if (!('FunctionCall' in proposal.kind)) return false;
-  const functionCall = proposal.kind.FunctionCall;
-  const receiver = functionCall.receiver_id;
-  const isLockup = receiver.includes('lockup.near') || receiver === 'lockup.near';
-  const firstAction = functionCall.actions[0];
-  return isLockup && firstAction?.method_name === 'create';
-}
-
 function ExpandedViewInternal({ proposal, policy }: ExpandedViewProps) {
-  if (isVestingProposal(proposal)) {
-    return <VestingExpanded proposal={proposal} />;
-  }
-
   const type = getProposalType(proposal);
   switch (type) {
-    case "Transfer":
+    case "Payment Request":
       return <TransferExpanded proposal={proposal} />;
-    case "FunctionCall":
+    case "Function Call":
       return <FunctionCallExpanded proposal={proposal} />;
-    case "ChangePolicy":
+    case "Change Policy":
       return <ChangePolicyExpanded proposal={proposal} />;
+    case "Vesting":
+      return <VestingExpanded proposal={proposal} />;
     default:
       return (
         <div className="p-4 bg-muted/30 rounded-lg">
@@ -75,7 +63,7 @@ export function ExpandedView({ proposal, policy }: ExpandedViewProps) {
         <TxDetails proposal={proposal} policy={policy} />
       </div>
       <div className="w-3/5">
-        <ProposalSidebar proposal={proposal} />
+        <ProposalSidebar proposal={proposal} policy={policy} />
       </div>
 
     </div>

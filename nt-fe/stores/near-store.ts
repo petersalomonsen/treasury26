@@ -4,6 +4,8 @@ import { create } from "zustand";
 import { NearConnector, SignAndSendTransactionsParams, SignedMessage, ConnectorAction } from "@hot-labs/near-connect";
 import { NEAR_TREASURY_CONFIG } from "@/constants/config";
 import { EventMap, FinalExecutionOutcome } from "@hot-labs/near-connect/build/types";
+import { Vote } from "@/lib/proposals-api";
+import { ProposalPermissionKind } from "@/lib/config-utils";
 
 export interface CreateProposalParams {
     treasuryId: string;
@@ -28,6 +30,7 @@ interface NearStore {
     signMessage: (message: string) => Promise<{ signatureData: SignedMessage; signedData: string }>;
     signAndSendTransactions: (params: SignAndSendTransactionsParams) => Promise<Array<FinalExecutionOutcome>>;
     createProposal: (params: CreateProposalParams) => Promise<Array<FinalExecutionOutcome>>;
+    voteProposal: (treasuryId: string, proposalId: string, proposalKind: ProposalPermissionKind, vote: Vote) => Promise<Array<FinalExecutionOutcome>>;
 }
 
 export const useNearStore = create<NearStore>((set, get) => ({
@@ -151,6 +154,34 @@ export const useNearStore = create<NearStore>((set, get) => ({
             network: "mainnet",
         });
     },
+
+    voteProposal: async (treasuryId: string, proposalId: string, proposalKind: ProposalPermissionKind, vote: Vote) => {
+        const { signAndSendTransactions } = get();
+        return await signAndSendTransactions({
+            transactions: [
+                {
+                    receiverId: treasuryId,
+                    actions: [
+                        {
+                            type: "FunctionCall",
+                            params: {
+                                methodName: "act_proposal",
+                                args: {
+                                    id: parseInt(proposalId),
+                                    action: `Vote${vote}`,
+                                    proposal: proposalKind,
+                                },
+                                gas: "300000000000000",
+                                deposit: "0",
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+    },
+
+
 }));
 
 // Convenience hook matching your existing API
@@ -164,6 +195,7 @@ export const useNear = () => {
         signMessage,
         signAndSendTransactions,
         createProposal,
+        voteProposal,
     } = useNearStore();
 
     return {
@@ -175,5 +207,6 @@ export const useNear = () => {
         signMessage,
         signAndSendTransactions,
         createProposal,
+        voteProposal,
     };
 };

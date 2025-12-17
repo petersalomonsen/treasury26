@@ -22,6 +22,7 @@ import Big from "big.js";
 import { useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";
+import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
 
 const vestingFormSchema = z.object({
   vesting: z.object({
@@ -73,6 +74,9 @@ type VestingFormValues = z.infer<typeof vestingFormSchema>;
 
 function Step1() {
   const form = useFormContext<VestingFormValues>();
+  const startDate = form.watch("vesting.startDate");
+  const endDate = form.watch("vesting.endDate");
+
   return (
     <PageCard>
       <StepperHeader title="New Vesting Schedule" />
@@ -82,8 +86,8 @@ function Step1() {
       <RecipientInput control={form.control} name="vesting.address" />
 
       <div className="grid grid-cols-2 gap-4">
-        <DateInput control={form.control} name="vesting.startDate" title="Start Date" />
-        <DateInput control={form.control} name="vesting.endDate" title="End Date" />
+        <DateInput control={form.control} name="vesting.startDate" title="Start Date" maxDate={endDate} />
+        <DateInput control={form.control} name="vesting.endDate" title="End Date" minDate={startDate} />
       </div>
 
       <ApprovalInfo />
@@ -93,6 +97,8 @@ function Step1() {
 function Step2({ handleBack }: StepProps) {
   const form = useFormContext<VestingFormValues>();
   const allowCancel = form.watch("vesting.allowCancel");
+  const startDate = form.watch("vesting.startDate");
+  const endDate = form.watch("vesting.endDate");
   return (
     <PageCard>
       <StepperHeader title="Advanced Settings" handleBack={handleBack} />
@@ -103,7 +109,7 @@ function Step2({ handleBack }: StepProps) {
         description="Allows the NEAR Foundation to cancel the lockup at any time. Non-cancellable lockups are not compatible with cliff dates."
       />
       {allowCancel && (
-        <DateInput control={form.control} name="vesting.cliffDate" title="Cliff Date" />
+        <DateInput control={form.control} name="vesting.cliffDate" title="Cliff Date" minDate={startDate} maxDate={endDate} />
       )}
       <CheckboxInput
         control={form.control}
@@ -244,6 +250,13 @@ export default function VestingPage() {
           ).toString(),
         };
 
+      const cancellableArgs = data.vesting.allowCancel ? {
+        foundation_account_id: selectedTreasury!,
+      } : {};
+      const stakingArgs = !data.vesting.allowEarn ? {
+        whitelist_account_id: LOCKUP_NO_WHITELIST_ACCOUNT_ID,
+      } : {};
+
       await createProposal({
         treasuryId: selectedTreasury!,
         proposal: {
@@ -254,20 +267,13 @@ export default function VestingPage() {
               actions: [
                 {
                   method_name: "create",
-                  args: toBase64(
-                    data.vesting.allowEarn
-                      ? {
-                        lockup_duration: "0",
-                        owner_account_id: data.vesting.address,
-                        ...vestingArgs,
-                      }
-                      : {
-                        lockup_duration: "0",
-                        owner_account_id: data.vesting.address,
-                        whitelist_account_id: "lockup-no-whitelist.near",
-                        ...vestingArgs,
-                      }
-                  ),
+                  args: toBase64({
+                    lockup_duration: "0",
+                    owner_account_id: data.vesting.address,
+                    ...vestingArgs,
+                    ...cancellableArgs,
+                    ...stakingArgs,
+                  }),
                   deposit,
                   gas: "150000000000000",
                 },
@@ -293,7 +299,7 @@ export default function VestingPage() {
             steps={[
               {
                 nextButton: ({ handleNext }) => StepperNextButton({ text: "Continue" })(() => {
-                  form.trigger().then((isValid) => {
+                  form.trigger(["vesting.address", "vesting.startDate", "vesting.endDate", "vesting.amount"]).then((isValid) => {
                     if (isValid) {
                       return handleNext();
                     }

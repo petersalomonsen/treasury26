@@ -7,12 +7,16 @@ interface DateInputProps<TFieldValues extends FieldValues = FieldValues> {
     control: Control<TFieldValues>;
     name: Path<TFieldValues>;
     title: string;
+    minDate?: Date;
+    maxDate?: Date;
 }
 
 export function DateInput<TFieldValues extends FieldValues = FieldValues>({
     control,
     name,
-    title
+    title,
+    minDate,
+    maxDate
 }: DateInputProps<TFieldValues>) {
     return (
         <FormField
@@ -24,6 +28,8 @@ export function DateInput<TFieldValues extends FieldValues = FieldValues>({
                         value={field.value}
                         onChange={field.onChange}
                         hideTime
+                        min={minDate}
+                        max={maxDate}
                         showCalendarIcon={false}
                         placeholder="mm/dd/yyyy"
 

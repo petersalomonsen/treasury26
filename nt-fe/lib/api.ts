@@ -363,3 +363,35 @@ export async function getBatchStorageDepositIsRegistered(
     return [];
   }
 }
+
+export interface TokenMetadata {
+  token_id: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  icon?: string;
+}
+
+/**
+ * Get metadata for a single token
+ * Fetches token name, symbol, decimals, and icon from the blockchain
+ */
+export async function getTokenMetadata(
+  tokenId: string,
+  network: string
+): Promise<TokenMetadata | null> {
+  if (!tokenId || !network) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/token/metadata`;
+
+    const response = await axios.get<TokenMetadata>(url, {
+      params: { tokenId, network },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting metadata for token ${tokenId} / ${network}`, error);
+    return null;
+  }
+}

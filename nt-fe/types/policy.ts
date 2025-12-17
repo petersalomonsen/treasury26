@@ -25,7 +25,7 @@ export interface UserInfo {
 }
 
 export type WeightOrRatio =
-  | { Weight: string } // U128 as string
+  | string // U128 as string
   | { Ratio: [number, number] }; // (numerator, denominator)
 
 export type WeightKind =

@@ -67,7 +67,7 @@ export interface ChangePolicyKind {
 export type ProposalKind = TransferKind | FunctionCallKind | ChangePolicyKind;
 
 export interface VoteCounts {
-  [roleName: string]: [number, number, number]; // [approve, reject, remove]
+  [roleName: string]: [number, number, number];
 }
 
 export interface Proposal {

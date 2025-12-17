@@ -87,3 +87,41 @@ export const encodeToMarkdown = (data: any) => {
     })
     .join(" <br>");
 };
+
+/**
+ * Decode proposal description to extract specific key value
+ * Supports both JSON and markdown formats
+ */
+export const decodeProposalDescription = (key: string, description: string) => {
+  // Try to parse as JSON
+  let parsedData;
+  try {
+    parsedData = JSON.parse(description);
+    if (parsedData && parsedData[key] !== undefined) {
+      return parsedData[key]; // Return value from JSON if key exists
+    }
+  } catch (error) {
+    // Not JSON, proceed to parse as markdown
+  }
+
+  // Handle as markdown
+  const markdownKey = parseKeyToReadableFormat(key);
+
+  const lines = description.split("<br>");
+  for (const line of lines) {
+    if (line.startsWith("* ")) {
+      const rest = line.slice(2);
+      const indexOfColon = rest.indexOf(":");
+      if (indexOfColon !== -1) {
+        const currentKey = rest.slice(0, indexOfColon).trim();
+        const value = rest.slice(indexOfColon + 1).trim();
+
+        if (currentKey.toLowerCase() === markdownKey.toLowerCase()) {
+          return value;
+        }
+      }
+    }
+  }
+
+  return null; // Return null if key not found
+};

@@ -1,101 +1,101 @@
 import type { Policy, RoleKind } from "@/types/policy";
+import { ProposalKind } from "./proposals-api";
 
-/**
- * Approval requirement result
- */
-export interface ApprovalRequirement {
-  /** Number of current approvals/members */
-  current: number;
-  /** Number of required approvals (quorum) */
-  required: number;
-  /** Threshold as a readable string (e.g., "1/2", "2/3") */
-  threshold: string;
-}
+export type ProposalPermissionKind = "transfer" | "call" | "policy";
 
-/**
- * Get the size of a role (number of members)
- * Returns 0 for Everyone and Member roles, actual count for Group roles
- */
-function getRoleSize(roleKind: RoleKind): number {
-  if ("Group" in roleKind) {
-    return roleKind.Group.length;
+
+export function getKindFromProposal(proposalKind: ProposalKind): ProposalPermissionKind | undefined {
+  if ('Transfer' in proposalKind) {
+    return "transfer";
   }
-  return 0;
+
+  if ('FunctionCall' in proposalKind) {
+    return "call";
+  }
+
+  if ('ChangePolicy' in proposalKind) {
+    return "policy";
+  }
+
+  return undefined;
 }
 
+
 /**
- * Extract approval requirements from a policy
- * Calculates X out of Y approval requirement based on the policy configuration
+ * Calculates the required number of votes and lists the approvers for a given action kind.
  *
- * @param policy - The versioned policy from the treasury
- * @returns ApprovalRequirement with current members, required approvals, and threshold
+ * @param daoPolicy - The DAO's policy configuration
+ * @param accountId - The account ID of the user checking permissions
+ * @param kind - The kind of proposal/action (e.g. "Transfer", "AddMember")
+ * @param isDeleteCheck - Whether to check for delete permissions (VoteRemove) instead of approve/reject
+ * @returns Object containing the list of approver accounts and the required vote count
  */
-export function getApprovalRequirement(
-  policy: Policy | null | undefined
-): ApprovalRequirement {
-  if (!policy) {
-    return {
-      current: 0,
-      required: 0,
-      threshold: "1/2",
-    };
+export function getApproversAndThreshold(daoPolicy: Policy, accountId: string, kindType: ProposalKind | ProposalPermissionKind, isDeleteCheck: boolean) {
+  const kind: ProposalPermissionKind = typeof kindType === "string" ? kindType : getKindFromProposal(kindType)!;
+  const groupWithPermission = (daoPolicy?.roles ?? []).filter((role) => {
+    const permissions = isDeleteCheck
+      ? ["*:*", `${kind}:*`, `${kind}:VoteRemove`, "*:VoteRemove"]
+      : [
+        "*:*",
+        `${kind}:*`,
+        `${kind}:VoteApprove`,
+        `${kind}:VoteReject`,
+        "*:VoteApprove",
+        "*:VoteReject",
+      ];
+    return (role?.permissions ?? []).some((i) => permissions.includes(i));
+  });
+
+  let approversGroup: string[] = [];
+  let ratios: number[] = [];
+  let requiredVotes = null;
+  let everyoneHasAccess = false;
+  // if group kind is everyone, current user will have access
+  groupWithPermission.map((i) => {
+    approversGroup = approversGroup.concat(("Group" in i.kind) ? i.kind.Group : []);
+    everyoneHasAccess = "Everyone" in i.kind;
+    const votePolicy =
+      Object.values(i?.vote_policy?.[kind] ?? {}).length > 0
+        ? i.vote_policy[kind]
+        : daoPolicy.default_vote_policy;
+    if (votePolicy.weight_kind === "RoleWeight") {
+      if (Array.isArray(votePolicy.threshold)) {
+        ratios = ratios.concat(votePolicy.threshold);
+        ratios = ratios.concat(votePolicy.threshold);
+      } else {
+        requiredVotes = parseFloat(votePolicy.threshold as string);
+      }
+    }
+  });
+
+  let numerator = 0;
+  let denominator = 0;
+
+  if (ratios.length > 0) {
+    ratios.forEach((value, index) => {
+      if (index == 0 || index % 2 === 0) {
+        // Even index -> numerator
+        numerator += value;
+      } else {
+        // Odd index -> denominator
+        denominator += value;
+      }
+    });
   }
-
-  const votePolicy = policy.default_vote_policy;
-
-  // Calculate total weight based on weight kind
-  let totalWeight = 0;
-  if (votePolicy.weight_kind === "RoleWeight") {
-    // For RoleWeight, count total members across all roles
-    totalWeight = policy.roles.reduce(
-      (acc, role) => acc + getRoleSize(role.kind),
-      0
-    );
-  } else {
-    // For TokenWeight, we'd need actual token amounts (not available in policy alone)
-    // Use quorum as total for display purposes
-    totalWeight = parseInt(votePolicy.quorum);
-  }
-
-  // Calculate required approvals based on threshold
-  let requiredApprovals = 0;
-  const thresholdValue = votePolicy.threshold;
-
-  if ("Ratio" in thresholdValue) {
-    const [numerator, denominator] = thresholdValue.Ratio;
-    requiredApprovals = Math.ceil((totalWeight * numerator) / denominator);
-  } else if ("Weight" in thresholdValue) {
-    requiredApprovals = parseInt(thresholdValue.Weight);
-  }
-
-  // Ensure quorum is met (minimum required)
-  const quorum = parseInt(votePolicy.quorum);
-  requiredApprovals = Math.max(requiredApprovals, quorum);
-
-  // Get threshold as readable string
-  const threshold = formatThreshold(votePolicy.threshold);
+  const approverAccounts = Array.from(new Set(approversGroup));
 
   return {
-    current: totalWeight,
-    required: requiredApprovals,
-    threshold,
+    // if everyoneHasAccess, current account doesn't change the requiredVotes
+    approverAccounts:
+      everyoneHasAccess && accountId
+        ? [...approverAccounts, accountId]
+        : approverAccounts,
+
+    requiredVotes:
+      typeof requiredVotes === "number"
+        ? requiredVotes
+        : Math.floor((numerator / denominator) * approverAccounts.length) + 1,
   };
-}
-
-/**
- * Format threshold from WeightOrRatio to readable string
- */
-function formatThreshold(threshold: Policy["default_vote_policy"]["threshold"]): string {
-  if ("Ratio" in threshold) {
-    const [numerator, denominator] = threshold.Ratio;
-    return `${numerator} of ${denominator}`;
-  }
-
-  if ("Weight" in threshold) {
-    return threshold.Weight;
-  }
-
-  return "1 of 2";
 }
 
 /**
@@ -103,20 +103,23 @@ function formatThreshold(threshold: Policy["default_vote_policy"]["threshold"]):
  *
  * @param policy - The versioned policy from the treasury
  * @param accountId - The user's account ID
- * @param permission - The permission string to check (e.g., "Transfer:*")
+ * @param permission - The permission string to check (e.g. "Transfer:*")
  * @returns true if the user has the permission
  */
 export function hasPermission(
   policy: Policy | null | undefined,
   accountId: string,
-  permission: string
+  kind: string,
+  action: string
 ): boolean {
   if (!policy) return false;
 
   // Check each role to see if user is in it and has the permission
   for (const role of policy.roles) {
     const isInRole = checkRoleMembership(role.kind, accountId);
-    const hasPermission = role.permissions.includes(permission) ||
+    const hasPermission = role.permissions.includes(`${kind}:${action}`) ||
+      role.permissions.includes(`${kind}:*`) ||
+      role.permissions.includes(`*:${action}`) ||
       role.permissions.includes("*:*");
 
     if (isInRole && hasPermission) {

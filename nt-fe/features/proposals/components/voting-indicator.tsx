@@ -1,61 +1,37 @@
+import { getApproversAndThreshold } from "@/lib/config-utils";
 import { Proposal } from "@/lib/proposals-api";
-import { Check, X } from "lucide-react";
+import { Policy } from "@/types/policy";
+import { Check } from "lucide-react";
+import { UserVote } from "./user-vote";
 
 interface VotingIndicatorProps {
   proposal: Proposal;
+  policy: Policy;
 }
 
-export function VotingIndicator({ proposal }: VotingIndicatorProps) {
-  const voteCounts = proposal.vote_counts;
+export function VotingIndicator({ proposal, policy }: VotingIndicatorProps) {
+  const { requiredVotes } = getApproversAndThreshold(policy, "", proposal.kind, false);
 
-  // Calculate totals
-  let totalApprove = 0;
-  let totalReject = 0;
-  let totalRequired = 0;
 
-  Object.values(voteCounts).forEach(([approve, reject, remove]) => {
-    totalApprove += approve;
-    totalReject += reject;
-    // Assuming threshold of 2 for demo - should come from policy
-    totalRequired = 2;
-  });
-
-  const total = totalApprove + totalReject;
+  const total = Object.values(proposal.votes).length;
 
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-muted-foreground">
-        {totalApprove} out of {totalRequired}
+        {total} out of {requiredVotes}
       </span>
-      <div className="flex items-center gap-1">
-        {Array.from({ length: totalRequired }).map((_, index) => {
-          if (index < totalApprove) {
+      <div className="flex -space-x-3">
+        {
+          Object.entries(proposal.votes).map(([account, vote]) => {
             return (
-              <div
-                key={index}
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500"
-              >
-                <Check className="h-3 w-3 text-white" />
-              </div>
-            );
-          } else if (index < totalApprove + totalReject) {
-            return (
-              <div
-                key={index}
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500"
-              >
-                <X className="h-3 w-3 text-white" />
-              </div>
-            );
-          } else {
-            return (
-              <div
-                key={index}
-                className="h-5 w-5 rounded-full border-2 border-muted-foreground/30"
+              <UserVote
+                key={account}
+                accountId={account}
+                vote={vote}
               />
             );
-          }
-        })}
+          })
+        }
       </div>
     </div>
   );

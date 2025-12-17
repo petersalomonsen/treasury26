@@ -1,8 +1,9 @@
 import { Proposal } from "@/lib/proposals-api";
-import { getProposalType } from "../../utils/get-proposal-type";
-import { TransferCell } from "./transfer-cell";
 import { FunctionCallCell } from "./function-call-cell";
 import { ChangePolicyCell } from "./change-policy-cell";
+import { getProposalType } from "../../utils/get-proposal-type";
+import { TokenCell } from "./token-cell";
+import { decodeArgs } from "@/lib/utils";
 
 interface TransactionCellProps {
   proposal: Proposal;
@@ -15,12 +16,25 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
   const type = getProposalType(proposal);
 
   switch (type) {
-    case "Transfer":
-      return <TransferCell proposal={proposal} />;
-    case "FunctionCall":
+    case "Payment Request":
+      if (!('Transfer' in proposal.kind)) return null;
+      const transfer = proposal.kind.Transfer;
+      return <TokenCell tokenId={transfer.token_id} amount={transfer.amount} receiver={transfer.receiver_id} />;
+    case "Function Call":
       return <FunctionCallCell proposal={proposal} />;
-    case "ChangePolicy":
+    case "Change Policy":
       return <ChangePolicyCell proposal={proposal} />;
+    case "Vesting":
+      if (!('FunctionCall' in proposal.kind)) return null;
+      const functionCall = proposal.kind.FunctionCall;
+      if (!functionCall.actions.some(action => action.method_name === 'create')) return null;
+      const action = functionCall.actions[0];
+      if (!action) return null;
+      const args = decodeArgs(action.args);
+      if (!args) return null;
+      const recipient = args?.owner_account_id;
+      const amount = action.deposit;
+      return <TokenCell tokenId="near" amount={amount} receiver={recipient || 'contributor.near'} />;
     default:
       return (
         <div className="flex flex-col gap-1">

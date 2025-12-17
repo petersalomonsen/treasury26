@@ -1,6 +1,10 @@
 import { Proposal } from "@/lib/proposals-api";
 import { InfoDisplay } from "@/components/info-display";
 import { formatNearAmount, decodeArgs, formatDate } from "@/lib/utils";
+import { NEAR_TOKEN } from "@/constants/token";
+import { useTokenPrice } from "@/hooks/use-treasury-queries";
+import { useMemo } from "react";
+import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
 
 interface VestingExpandedProps {
   proposal: Proposal;
@@ -8,6 +12,7 @@ interface VestingExpandedProps {
 
 export function VestingExpanded({ proposal }: VestingExpandedProps) {
   if (!('FunctionCall' in proposal.kind)) return null;
+  const { data: usdPrice } = useTokenPrice("near", "NEAR");
 
   const functionCall = proposal.kind.FunctionCall;
   const receiver = functionCall.receiver_id;
@@ -23,25 +28,27 @@ export function VestingExpanded({ proposal }: VestingExpandedProps) {
   if (!args) return null;
 
   const vestingSchedule = args.vesting_schedule?.VestingSchedule;
+  const whitelistAccountId = args.whitelist_account_id;
+  const foundationAccountId = args.foundation_account_id;
   const recipient = args.owner_account_id;
-  const amount = firstAction.deposit;
-  const lockupDuration = args.lockup_duration;
+  const nearAmount = formatNearAmount(firstAction.deposit);
 
-  // Prepare info items
-  const sourceWalletLabel = proposal.status === "Approved" ? "Cross-chain Wallet" : "Source Wallet";
+  const estimatedUSDValue = useMemo(() => {
+    if (!usdPrice?.price || !firstAction.deposit || isNaN(Number(firstAction.deposit))) {
+      return 0;
+    }
+    return Number(nearAmount) * usdPrice.price;
+  }, [usdPrice?.price, firstAction.deposit]);
 
   const infoItems = [
-    { label: sourceWalletLabel, value: sourceWalletLabel },
     { label: "Recipient", value: recipient || "N/A" },
     {
       label: "Amount",
       value: (
         <div className="flex items-center gap-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
-            <span className="text-[10px] text-white font-bold">N</span>
-          </div>
-          <span>{formatNearAmount(amount)} NEAR</span>
-          <span className="text-muted-foreground">($2,130.00)</span>
+          <img src={NEAR_TOKEN.icon} alt="NEAR" width={20} height={20} />
+          <span>{nearAmount} NEAR</span>
+          <span className="text-muted-foreground text-xs">(${estimatedUSDValue.toFixed(2)})</span>
         </div>
       )
     },
@@ -56,8 +63,8 @@ export function VestingExpanded({ proposal }: VestingExpandedProps) {
   }
 
   infoItems.push(
-    { label: "Allow Cancellation", value: lockupDuration === "0" ? "Yes" : "No" },
-    { label: "Allow Staking", value: "No" }
+    { label: "Allow Cancellation", value: foundationAccountId ? "Yes" : "No" },
+    { label: "Allow Staking", value: whitelistAccountId === LOCKUP_NO_WHITELIST_ACCOUNT_ID ? "No" : "Yes" }
   );
 
   return (

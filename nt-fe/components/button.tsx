@@ -13,6 +13,9 @@ export function Button({ variant, className: classNameOverride, size, ...props }
         case "link":
             className = "hover:no-underline font-semibold text-primary/80 hover:text-primary";
             break;
+        case "secondary":
+            className = "border-border hover:border";
+            break;
         default:
             className = "";
             break;
