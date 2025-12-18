@@ -12,10 +12,14 @@ import { Policy } from "@/types/policy";
 import { getProposalType } from "../../utils/proposal-utils";
 import { StakingExpanded } from "./staking-expanded";
 import { ChangeConfigExpanded } from "./change-config-expanded";
+import { useTreasury } from "@/stores/treasury-store";
+import Link from "next/link";
+import { toast } from "sonner";
 
 interface ExpandedViewProps {
   proposal: Proposal;
   policy: Policy;
+  hideOpenInNewTab?: boolean;
 }
 
 function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
@@ -42,25 +46,36 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
   }
 }
 
-export function ExpandedView({ proposal, policy }: ExpandedViewProps) {
+export function ExpandedView({ proposal, policy, hideOpenInNewTab = false }: ExpandedViewProps) {
+  const { selectedTreasury } = useTreasury();
   const component = ExpandedViewInternal({ proposal, policy });
+  const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(requestUrl);
+      toast.success("Link copied to clipboard");
+    } catch (error) {
+      toast.error("Failed to copy link");
+    }
+  }
 
   return (
-    <div className="flex w-full gap-4">
-      <div className="flex w-full flex-col gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
+      <div className="w-full flex flex-col gap-4">
         <PageCard className="w-full">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Request Details</h3>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCopy}>
                 <Copy className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              {!hideOpenInNewTab && (
+                <Link href={requestUrl} target="_blank" rel="noopener noreferrer">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
           {component}
@@ -68,7 +83,7 @@ export function ExpandedView({ proposal, policy }: ExpandedViewProps) {
 
         <TxDetails proposal={proposal} policy={policy} />
       </div>
-      <div className="w-3/5">
+      <div className="w-full">
         <ProposalSidebar proposal={proposal} policy={policy} />
       </div>
 

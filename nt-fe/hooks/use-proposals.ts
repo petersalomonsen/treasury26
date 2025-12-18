@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getProposals, ProposalFilters } from "@/lib/proposals-api";
+import { getProposals, ProposalFilters, getProposal } from "@/lib/proposals-api";
 
 /**
  * Query hook to get proposals for a specific DAO with optional filtering
@@ -38,6 +38,16 @@ export function useProposals(
     queryKey: ["proposals", daoId, filters],
     queryFn: () => getProposals(daoId!, filters),
     enabled: !!daoId,
+    staleTime: 1000 * 60 * 2, // 2 minutes (proposals can change frequently)
+    refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
+  });
+}
+
+export function useProposal(daoId: string | null | undefined, proposalId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["proposal", daoId, proposalId],
+    queryFn: () => getProposal(daoId!, proposalId!),
+    enabled: !!daoId && !!proposalId,
     staleTime: 1000 * 60 * 2, // 2 minutes (proposals can change frequently)
     refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
   });

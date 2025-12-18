@@ -1,19 +1,22 @@
 "use client";
 
-import { Menu, Sun, Moon, Bell } from "lucide-react";
+import { Menu, Sun, Moon, Bell, ArrowLeft } from "lucide-react";
 import { useSidebar } from "@/stores/sidebar-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
 import { SignIn } from "@/components/sign-in";
 import { ReactNode, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface PageComponentLayoutProps {
   title: string;
   description?: string;
+  backButton?: boolean | string;
   children: ReactNode;
 }
 
-export function PageComponentLayout({ title, description, children }: PageComponentLayoutProps) {
+export function PageComponentLayout({ title, description, backButton, children }: PageComponentLayoutProps) {
   const { toggleSidebar } = useSidebar();
   const { theme, toggleTheme } = useThemeStore();
 
@@ -22,6 +25,8 @@ export function PageComponentLayout({ title, description, children }: PageCompon
       document.documentElement.classList.toggle("dark", theme === "dark");
     }
   }, [theme]);
+
+  const router = useRouter();
 
   return (
     <div className="flex flex-col h-full">
@@ -37,6 +42,26 @@ export function PageComponentLayout({ title, description, children }: PageCompon
             <Menu className="h-6 w-6" />
           </Button>
           <div className="flex items-baseline gap-3">
+            {backButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (typeof backButton === 'string') {
+                    // If there's history, go back; otherwise, navigate to the provided fallback URL
+                    if (window.history.length > 1) {
+                      router.back();
+                    } else {
+                      router.push(backButton);
+                    }
+                  } else {
+                    router.back();
+                  }
+                }}
+              >
+                <ArrowLeft className="h-5 w-5 stroke-3 hidden lg:block" />
+              </Button>
+            )}
             <h1 className="text-lg font-bold">{title}</h1>
             {description && (
               <span className="hidden md:inline text-xs text-muted-foreground">{description}</span>

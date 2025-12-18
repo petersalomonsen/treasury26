@@ -219,3 +219,18 @@ export async function getProposals(
     return { page: 0, page_size: 0, proposals: [] };
   }
 }
+
+export async function getProposal(daoId: string, proposalId: string): Promise<Proposal | null> {
+  if (!daoId || !proposalId) {
+    return null;
+  }
+
+  try {
+    const url = `${BACKEND_API_BASE}/proposal/${daoId}/${proposalId}`;
+    const response = await axios.get<Proposal>(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting proposal for DAO ${daoId} and proposal ${proposalId}`, error);
+    return null;
+  }
+}

@@ -3,7 +3,6 @@
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useTreasury } from "@/stores/treasury-store";
 import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
-import { useMemo } from "react";
 
 import Assets from "./components/assets";
 import BalanceWithGraph from "./components/balance-with-graph";
