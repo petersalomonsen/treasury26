@@ -5,14 +5,15 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
-import { ProposalStatus } from "@/lib/proposals-api";
+import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Filter, Download } from "lucide-react";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useQueryClient } from "@tanstack/react-query";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
@@ -20,8 +21,10 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
 
   const page = parseInt(searchParams.get("page") || "0", 10);
+  const pageSize = 15;
 
   const updatePage = useCallback((newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -32,10 +35,28 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { data, isLoading, error } = useProposals(selectedTreasury, {
     statuses: status,
     page,
-    page_size: 15,
+    page_size: pageSize,
     sort_by: "CreationTime",
     sort_direction: "desc",
   });
+
+  // Prefetch the next page
+  useEffect(() => {
+    if (selectedTreasury && data && data.proposals.length === pageSize && (page + 1) * pageSize < data.total) {
+      const nextFilters = {
+        statuses: status,
+        page: page + 1,
+        page_size: pageSize,
+        sort_by: "CreationTime" as const,
+        sort_direction: "desc" as const,
+      };
+
+      queryClient.prefetchQuery({
+        queryKey: ["proposals", selectedTreasury, nextFilters],
+        queryFn: () => getProposals(selectedTreasury, nextFilters),
+      });
+    }
+  }, [data, page, selectedTreasury, status, queryClient]);
 
   if (isLoading) {
     return (
@@ -68,7 +89,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
           proposals={data.proposals}
           policy={policy}
           pageIndex={page}
-          pageSize={15}
+          pageSize={pageSize}
           total={data.total}
           onPageChange={updatePage}
         />
