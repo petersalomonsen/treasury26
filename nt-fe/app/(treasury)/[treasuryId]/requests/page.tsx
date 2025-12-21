@@ -7,13 +7,15 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Filter, Download } from "lucide-react";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
+import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
+import { addDays } from "date-fns";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
@@ -26,29 +28,61 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const page = parseInt(searchParams.get("page") || "0", 10);
   const pageSize = 15;
 
+  const filters = useMemo(() => {
+    const f: any = {
+      page,
+      page_size: pageSize,
+      sort_by: "CreationTime",
+      sort_direction: "desc",
+    };
+
+    if (status) f.statuses = status;
+
+    const typeParam = searchParams.get("proposal_types");
+    if (typeParam) {
+      f.proposal_types = [typeParam];
+    }
+
+    const proposerParam = searchParams.get("proposers");
+    if (proposerParam) f.proposers = [proposerParam];
+
+    const approverParam = searchParams.get("approvers");
+    if (approverParam) f.approvers = [approverParam];
+
+    const recipientParam = searchParams.get("recipients");
+    if (recipientParam) f.recipients = [recipientParam];
+
+    const tokenParam = searchParams.get("tokens");
+    if (tokenParam) f.tokens = [tokenParam];
+
+    const searchParam = searchParams.get("search");
+    if (searchParam) f.search = searchParam;
+
+    const dateParam = searchParams.get("created_date");
+    if (dateParam) {
+      const date = new Date(dateParam);
+      f.created_date_from = date.toISOString().split('T')[0];
+      // Add 1 day to the date
+      f.created_date_to = addDays(date, 1).toISOString().split('T')[0];
+    }
+
+    return f;
+  }, [page, pageSize, status, searchParams]);
+
   const updatePage = useCallback((newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", newPage.toString());
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
 
-  const { data, isLoading, error } = useProposals(selectedTreasury, {
-    statuses: status,
-    page,
-    page_size: pageSize,
-    sort_by: "CreationTime",
-    sort_direction: "desc",
-  });
+  const { data, isLoading, error } = useProposals(selectedTreasury, filters);
 
   // Prefetch the next page
   useEffect(() => {
     if (selectedTreasury && data && data.proposals.length === pageSize && (page + 1) * pageSize < data.total) {
       const nextFilters = {
-        statuses: status,
+        ...filters,
         page: page + 1,
-        page_size: pageSize,
-        sort_by: "CreationTime" as const,
-        sort_direction: "desc" as const,
       };
 
       queryClient.prefetchQuery({
@@ -56,7 +90,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
         queryFn: () => getProposals(selectedTreasury, nextFilters),
       });
     }
-  }, [data, page, selectedTreasury, status, queryClient]);
+  }, [data, page, selectedTreasury, filters, queryClient, pageSize]);
 
   if (isLoading) {
     return (
@@ -125,22 +159,14 @@ export default function RequestsPage() {
               <TabsTrigger value="expired">Expired</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-3">
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search requests..."
-                  className="pl-9 h-9"
-                />
-              </div>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="h-9">
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
             </div>
+          </div>
+          <div className="mb-4">
+            <ProposalFiltersComponent />
           </div>
           <TabsContents>
             <TabsContent value="all">

@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Pagination } from "@/components/pagination";
+import { ProposalStatusPill } from "./proposal-status-pill";
 
 import {
   ColumnDef,
@@ -44,22 +45,6 @@ interface ProposalsTableProps {
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
-}
-
-function getStatusColor(status: ProposalStatus): string {
-  switch (status) {
-    case "Approved":
-      return "bg-green-500/10 text-green-600";
-    case "Rejected":
-    case "Failed":
-      return "bg-red-500/10 text-red-600";
-    case "InProgress":
-      return "bg-orange-500/10 text-orange-600";
-    case "Expired":
-      return "bg-gray-500/10 text-gray-600";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
 }
 
 export function ProposalsTable({
@@ -141,13 +126,7 @@ export function ProposalsTable({
       columnHelper.accessor("status", {
         header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Status</span>,
         cell: (info) => (
-          <span
-            className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(
-              info.getValue()
-            )}`}
-          >
-            {getProposalStatus(info.row.original, policy)}
-          </span>
+          <ProposalStatusPill status={getProposalStatus(info.row.original, policy)} />
         ),
       }),
       columnHelper.display({
