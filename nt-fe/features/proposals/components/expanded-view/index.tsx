@@ -61,7 +61,7 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
       const configData = data as ChangeConfigData;
       return <ChangeConfigExpanded data={configData} />;
     }
-    case "Swap Request": {
+    case "Exchange": {
       const swapData = data as SwapRequestData;
       return <SwapExpanded data={swapData} />;
     }

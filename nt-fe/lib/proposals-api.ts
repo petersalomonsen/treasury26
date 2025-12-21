@@ -97,6 +97,7 @@ export interface Proposal {
 export interface ProposalsResponse {
   page: number;
   page_size: number;
+  total: number;
   proposals: Proposal[];
 }
 

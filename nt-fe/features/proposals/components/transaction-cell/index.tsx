@@ -48,7 +48,7 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
       const vestingData = data as VestingData;
       return <TokenCell data={vestingData} />;
     }
-    case "Swap Request": {
+    case "Exchange": {
       const swapData = data as SwapRequestData;
       return <SwapCell data={swapData} />;
     }

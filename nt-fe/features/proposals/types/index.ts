@@ -7,7 +7,7 @@ import { Policy } from "@/types/policy";
  */
 export type ProposalUIKind =
     | "Payment Request"
-    | "Swap Request"
+    | "Exchange"
     | "Function Call"
     | "Change Policy"
     | "Change Config"
@@ -132,7 +132,7 @@ export interface ProposalTypeDataMap {
     "Change Config": ChangeConfigData;
     Staking: StakingData;
     Vesting: VestingData;
-    "Swap Request": SwapRequestData;
+    "Exchange": SwapRequestData;
     Withdraw: StakingData; // Same as Staking
     Unknown: UnknownData;
 }

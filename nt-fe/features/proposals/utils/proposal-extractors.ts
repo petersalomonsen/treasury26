@@ -241,11 +241,11 @@ export function extractVestingData(proposal: Proposal): VestingData {
 }
 
 /**
- * Extract Swap Request data from proposal
+ * Extract Exchange data from proposal
  */
 export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
   if (!("FunctionCall" in proposal.kind)) {
-    throw new Error("Proposal is not a Swap Request proposal");
+    throw new Error("Proposal is not a Exchange proposal");
   }
 
   const functionCall = proposal.kind.FunctionCall;
@@ -254,12 +254,12 @@ export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
   );
 
   if (!action) {
-    throw new Error("Proposal is not a Swap Request proposal");
+    throw new Error("Proposal is not a Exchange proposal");
   }
 
   const args = decodeArgs(action?.args);
   if (!args) {
-    throw new Error("Proposal is not a Swap Request proposal");
+    throw new Error("Proposal is not a Exchange proposal");
   }
 
   // Extract from description
@@ -328,7 +328,7 @@ export function extractProposalData(proposal: Proposal): {
     case "Vesting":
       data = extractVestingData(proposal);
       break;
-    case "Swap Request":
+    case "Exchange":
       data = extractSwapRequestData(proposal);
       break;
     case "Unknown":

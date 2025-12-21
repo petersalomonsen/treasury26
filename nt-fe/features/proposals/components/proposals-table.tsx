@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Proposal, ProposalStatus } from "@/lib/proposals-api";
 import {
   Table,
@@ -21,10 +21,29 @@ import { formatDate } from "@/lib/utils";
 import { User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Pagination } from "@/components/pagination";
+
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getExpandedRowModel,
+  createColumnHelper,
+  ExpandedState,
+  getPaginationRowModel,
+} from "@tanstack/react-table"
+
+const columnHelper = createColumnHelper<Proposal>();
 
 interface ProposalsTableProps {
   proposals: Proposal[];
   policy: Policy;
+  pageIndex?: number;
+  pageSize?: number;
+  total?: number;
+  onPageChange?: (page: number) => void;
 }
 
 function getStatusColor(status: ProposalStatus): string {
@@ -43,43 +62,136 @@ function getStatusColor(status: ProposalStatus): string {
   }
 }
 
-export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+export function ProposalsTable({
+  proposals,
+  policy,
+  pageIndex = 0,
+  pageSize = 10,
+  total = 0,
+  onPageChange
+}: ProposalsTableProps) {
+  const [rowSelection, setRowSelection] = useState({});
+  const [expanded, setExpanded] = useState<ExpandedState>({});
 
-  const toggleRow = (id: number) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const columns = useMemo<ColumnDef<Proposal, any>[]>(
+    () => [
+      columnHelper.display({
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      }),
+      columnHelper.accessor("id", {
+        header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Request</span>,
+        cell: (info) => {
+          const proposal = info.row.original;
+          const title = getProposalUIKind(proposal);
+          const date = formatDate(
+            new Date(parseInt(proposal.submission_time) / 1000000)
+          );
+          return (
+            <div className="flex items-center gap-5 max-w-[400px] truncate">
+              <span className="text-sm text-muted-foreground w-6 shrink-0">
+                #{proposal.id}
+              </span>
+              <ProposalTypeIcon proposal={proposal} />
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{title}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">{date}</span>
+              </div>
+            </div>
+          );
+        },
+      }),
+      columnHelper.display({
+        id: "transaction",
+        header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Transaction</span>,
+        cell: ({ row }) => (
+          <div className="max-w-[300px] truncate">
+            <TransactionCell proposal={row.original} />
+          </div>
+        ),
+      }),
+      columnHelper.accessor("proposer", {
+        header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Requester</span>,
+        cell: (info) => <User accountId={info.getValue()} />,
+      }),
+      columnHelper.display({
+        id: "voting",
+        header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Voting</span>,
+        cell: ({ row }) => (
+          <VotingIndicator proposal={row.original} policy={policy} />
+        ),
+      }),
+      columnHelper.accessor("status", {
+        header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Status</span>,
+        cell: (info) => (
+          <span
+            className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(
+              info.getValue()
+            )}`}
+          >
+            {getProposalStatus(info.row.original, policy)}
+          </span>
+        ),
+      }),
+      columnHelper.display({
+        id: "expand",
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => row.toggleExpanded()}
+            className="h-8 w-8 p-0"
+          >
+            {row.getIsExpanded() ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        ),
+      }),
+    ],
+    [policy]
+  );
 
-  const toggleSelect = (id: number) => {
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const table = useReactTable({
+    data: proposals,
+    columns,
+    state: {
+      rowSelection,
+      expanded,
+      pagination: {
+        pageIndex,
+        pageSize,
+      },
+    },
+    getPaginationRowModel: getPaginationRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onExpandedChange: setExpanded,
+    getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getRowId: (row) => row.id.toString(),
+    manualPagination: true,
+  });
 
-  const toggleSelectAll = () => {
-    if (selectedRows.size === proposals.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(proposals.map((p) => p.id)));
-    }
-  };
-
-  if (proposals.length === 0) {
+  if (proposals.length === 0 && pageIndex === 0) {
     return (
       <div className="flex items-center justify-center py-8">
         <p className="text-muted-foreground">No proposals found.</p>
@@ -87,111 +199,59 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
     );
   }
 
+  const totalPages = Math.ceil(total / pageSize);
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead>
-            <Checkbox
-              checked={selectedRows.size === proposals.length}
-              onCheckedChange={toggleSelectAll}
-            />
-          </TableHead>
-          <TableHead className="w-fit text-xs font-medium uppercase text-muted-foreground">
-            Request
-          </TableHead>
-          <TableHead className="max-w-[400px] text-xs font-medium uppercase text-muted-foreground">
-            Transaction
-          </TableHead>
-          <TableHead className="text-xs font-medium uppercase text-muted-foreground">
-            Requester
-          </TableHead>
-          <TableHead className="text-xs font-medium uppercase text-muted-foreground">
-            Voting
-          </TableHead>
-          <TableHead className="w-[120px] text-xs font-medium uppercase text-muted-foreground">
-            Status
-          </TableHead>
-          <TableHead className="w-[40px]"></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {proposals.map((proposal) => {
-          const isExpanded = expandedRows.has(proposal.id);
-          const isSelected = selectedRows.has(proposal.id);
-          const title = getProposalUIKind(proposal);
-          const date = formatDate(new Date(parseInt(proposal.submission_time) / 1000000));
-
-          return (
-            <Fragment key={proposal.id}>
-              <TableRow>
-                <TableCell>
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggleSelect(proposal.id)}
-                  />
-                </TableCell>
-
-                <TableCell className="flex items-center gap-5 max-w-[400px] truncate">
-                  <span className="text-sm text-muted-foreground w-6 shrink-0">#{proposal.id}</span>
-                  <ProposalTypeIcon proposal={proposal} />
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{title}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{date}</span>
-                  </div>
-                </TableCell>
-
-                <TableCell className="max-w-[200px] truncate">
-                  <TransactionCell proposal={proposal} />
-                </TableCell>
-
-                <TableCell>
-                  <User accountId={proposal.proposer} />
-                </TableCell>
-
-                <TableCell>
-                  <VotingIndicator proposal={proposal} policy={policy} />
-                </TableCell>
-
-                <TableCell>
-                  <span
-                    className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(
-                      proposal.status
-                    )}`}
-                  >
-                    {getProposalStatus(proposal, policy)}
-                  </span>
-                </TableCell>
-
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleRow(proposal.id)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </TableCell>
+    <div className="flex flex-col gap-4">
+      <ScrollArea className="grid">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                  </TableHead>
+                ))}
               </TableRow>
-
-              {isExpanded && (
-                <TableRow>
-                  <TableCell colSpan={7} className="p-4 bg-background">
-                    <ExpandedView proposal={proposal} policy={policy} />
-                  </TableCell>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <Fragment key={row.id}>
+                <TableRow data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              )}
-            </Fragment>
-          );
-        })}
-      </TableBody>
-    </Table>
+                {row.getIsExpanded() && (
+                  <TableRow>
+                    <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-background">
+                      <ExpandedView proposal={row.original} policy={policy} />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
+            ))}
+          </TableBody>
+        </Table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+
+      {onPageChange && (
+        <Pagination
+          pageIndex={pageIndex}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+        />
+      )}
+    </div>
   );
 }

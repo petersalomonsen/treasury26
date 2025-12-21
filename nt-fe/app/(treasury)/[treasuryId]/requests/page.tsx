@@ -32,7 +32,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { data, isLoading, error } = useProposals(selectedTreasury, {
     statuses: status,
     page,
-    page_size: 20,
+    page_size: 15,
     sort_by: "CreationTime",
     sort_direction: "desc",
   });
@@ -53,7 +53,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
     );
   }
 
-  if (!data || data.proposals.length === 0) {
+  if (!data || (data.proposals.length === 0 && page === 0)) {
     return (
       <div className="flex items-center justify-center py-8">
         <p className="text-muted-foreground">No proposals found.</p>
@@ -61,35 +61,17 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
     );
   }
 
-  // Calculate total pages based on response
-  const totalPages = Math.ceil(data.proposals.length / data.page_size);
-
   return (
     <div className="flex flex-col gap-4">
       {policy && (
-        <ProposalsTable proposals={data.proposals} policy={policy} />
-      )}
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            onClick={() => updatePage(Math.max(0, page - 1))}
-            disabled={page === 0}
-            variant="outline"
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {totalPages}
-          </span>
-          <Button
-            onClick={() => updatePage(Math.min(totalPages - 1, page + 1))}
-            disabled={page >= totalPages - 1}
-            variant="outline"
-          >
-            Next
-          </Button>
-        </div>
+        <ProposalsTable
+          proposals={data.proposals}
+          policy={policy}
+          pageIndex={page}
+          pageSize={15}
+          total={data.total}
+          onPageChange={updatePage}
+        />
       )}
     </div>
   );

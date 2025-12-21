@@ -41,7 +41,7 @@ export function ProposalTypeIcon({ proposal }: ProposalTypeIconProps) {
           <Database className="size-5 dark:text-green-300 text-green-700" />
         </div>
       );
-    case "Swap Request":
+    case "Exchange":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-pink-500/10 bg-pink-100">
           <CreditCard className="size-5 dark:text-pink-300 text-pink-800" />

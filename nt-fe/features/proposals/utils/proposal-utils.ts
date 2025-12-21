@@ -58,7 +58,7 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
         return "Payment Request";
       }
       if (isMTTransferProposal(proposal)) {
-        return "Swap Request";
+        return "Exchange";
       }
       if (isStakingProposal(proposal)) {
         return "Staking";
