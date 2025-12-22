@@ -5,6 +5,10 @@ export type ProposalPermissionKind = "transfer" | "call" | "policy" | "config";
 
 
 export function getKindFromProposal(proposalKind: ProposalKind): ProposalPermissionKind | undefined {
+  if (typeof proposalKind === "string") {
+    return proposalKind as unknown as ProposalPermissionKind;
+  }
+
   if ('Transfer' in proposalKind) {
     return "transfer";
   }

@@ -24,7 +24,9 @@ import {
   StakingData,
   VestingData,
   SwapRequestData,
+  BatchPaymentRequestData,
 } from "../../types/index";
+import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 
 interface ExpandedViewProps {
   proposal: Proposal;
@@ -60,6 +62,10 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
     case "Change Config": {
       const configData = data as ChangeConfigData;
       return <ChangeConfigExpanded data={configData} />;
+    }
+    case "Batch Payment Request": {
+      const batchPaymentRequestData = data as BatchPaymentRequestData;
+      return <BatchPaymentRequestExpanded data={batchPaymentRequestData} />;
     }
     case "Exchange": {
       const swapData = data as SwapRequestData;

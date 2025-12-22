@@ -12,6 +12,7 @@ import {
   UnknownData,
   VestingSchedule,
   AnyProposalData,
+  BatchPaymentRequestData,
 } from "../types/index";
 import { getProposalUIKind } from "./proposal-utils";
 import { ProposalUIKind } from "../types/index";
@@ -289,6 +290,44 @@ export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
 }
 
 /**
+ * Extract Batch Payment Request data from proposal
+ */
+export function extractBatchPaymentRequestData(proposal: Proposal): BatchPaymentRequestData {
+  if (!("FunctionCall" in proposal.kind)) {
+    throw new Error("Proposal is not a Batch Payment Request proposal");
+  }
+
+  const functionCall = proposal.kind.FunctionCall;
+  const action = functionCall.actions.find(
+    (a) => a.method_name === "ft_transfer_call" || a.method_name === "approve_list"
+  );
+
+  if (!action) {
+    throw new Error("Proposal is not a Batch Payment Request proposal");
+  }
+
+  const args = decodeArgs(action.args);
+  if (!args) {
+    throw new Error("Proposal is not a Batch Payment Request proposal");
+  }
+
+  if (action.method_name === "approve_list") {
+    return {
+      tokenId: "NEAR",
+      totalAmount: action.deposit,
+      batchId: args.list_id || "",
+    }
+  }
+
+
+  return {
+    tokenId: functionCall.receiver_id,
+    totalAmount: args.amount || "0",
+    batchId: args.msg || "",
+  };
+}
+
+/**
  * Extract Unknown proposal data
  */
 export function extractUnknownData(proposal: Proposal): UnknownData {
@@ -314,6 +353,10 @@ export function extractProposalData(proposal: Proposal): {
       break;
     case "Function Call":
       data = extractFunctionCallData(proposal);
+      break;
+    case "Batch Payment Request":
+      console.log("Batch Payment Request", proposal);
+      data = extractBatchPaymentRequestData(proposal);
       break;
     case "Change Policy":
       data = extractChangePolicyData(proposal);

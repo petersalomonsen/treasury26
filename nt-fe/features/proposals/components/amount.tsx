@@ -9,6 +9,7 @@ interface AmountProps {
     network?: string;
     showUSDValue?: boolean;
     showNetwork?: boolean;
+    textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
 }
 
@@ -18,7 +19,7 @@ const iconSizeClasses = {
     lg: "size-6",
 }
 
-export function Amount({ amount, amountWithDecimals, tokenId, network = "NEAR", showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
+export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, network = "NEAR", showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
     const { data: tokenData } = useToken(tokenId, network);
     const { data: tokenPriceData } = useTokenPrice(showUSDValue ? null : tokenId, network);
     const amountValue = amount ? formatBalance(amount, tokenData?.decimals || 24) : Number(amountWithDecimals).toFixed(6);
@@ -33,6 +34,15 @@ export function Amount({ amount, amountWithDecimals, tokenId, network = "NEAR", 
         return `≈ $${(Number(amountValue) * price!).toFixed(2)}`;
     }, [tokenPriceData, tokenData, amountValue]);
     const iconClass = iconSizeClasses[iconSize];
+    if (textOnly) {
+        return (
+            <p className="text-sm font-medium">
+                {amountValue} {tokenData?.symbol}
+                {showUSDValue && (
+                    <span className="text-muted-foreground text-xs">({estimatedUSDValue})</span>
+                )}
+            </p>);
+    }
     return (
         <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
@@ -40,7 +50,7 @@ export function Amount({ amount, amountWithDecimals, tokenId, network = "NEAR", 
                     <img src={tokenData?.icon} className={cn("rounded-full shrink-0", iconClass)} alt={tokenData?.name} />
                 )}
                 {tokenData && (
-                    <span>{amountValue} {tokenData?.symbol}</span>
+                    <span className="font-medium">{amountValue} {tokenData?.symbol}</span>
                 )}
                 {showUSDValue && <span className="text-muted-foreground text-xs">({estimatedUSDValue})</span>}
             </div>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, getLockupPool, getProfile, getBatchProfiles, StorageDepositRequest } from "@/lib/api";
+import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, getLockupPool, getProfile, getBatchProfiles, getBatchPayment, StorageDepositRequest } from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -228,5 +228,19 @@ export function useBatchProfiles(accountIds: string[]) {
     queryFn: () => getBatchProfiles(accountIds),
     enabled: accountIds.length > 0,
     staleTime: 1000 * 60 * 10, // 10 minutes (profile data doesn't change frequently)
+  });
+}
+
+/**
+ * Query hook to get batch payment details by batch ID
+ * Fetches from backend which queries the batch payment contract and caches the result
+ * Returns batch payment info including token, submitter, status, and list of payments
+ */
+export function useBatchPayment(batchId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["batchPayment", batchId],
+    queryFn: () => getBatchPayment(batchId!),
+    enabled: !!batchId,
+    staleTime: 1000 * 60 * 5, // 5 minutes (batch payment data doesn't change frequently once created)
   });
 }

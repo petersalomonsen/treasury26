@@ -2,6 +2,7 @@ import { getKindFromProposal } from "@/lib/config-utils";
 import { Proposal } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
 import { ProposalUIKind } from "../types/index";
+import { decodeArgs } from "@/lib/utils";
 
 function isVestingProposal(proposal: Proposal): boolean {
   if (!('FunctionCall' in proposal.kind)) return false;
@@ -12,11 +13,35 @@ function isVestingProposal(proposal: Proposal): boolean {
   return isLockup && firstAction?.method_name === 'create';
 }
 
-function isFTTransferProposal(proposal: Proposal): boolean {
+function isBatchPaymentProposal(proposal: Proposal): boolean {
   if (!('FunctionCall' in proposal.kind)) return false;
   const functionCall = proposal.kind.FunctionCall;
 
-  return functionCall.actions.some(action => action.method_name === 'ft_transfer' || action.method_name === 'ft_transfer_call');
+  if (functionCall.receiver_id !== 'bulkpayment.near') {
+    return false;
+  }
+
+  if (functionCall.actions.some(action => action.method_name === 'approve_list')) {
+    return true;
+  }
+  return false;
+}
+
+function processFTTransferProposal(proposal: Proposal): "Payment Request" | "Batch Payment Request" | undefined {
+  if (!('FunctionCall' in proposal.kind)) return undefined;
+  const functionCall = proposal.kind.FunctionCall;
+
+  const action = functionCall.actions.find(action => action.method_name === 'ft_transfer' || action.method_name === 'ft_transfer_call');
+  if (!action) return undefined;
+  if (action.method_name === 'ft_transfer') {
+    return "Payment Request" as const;
+  }
+  const args = decodeArgs(action.args);
+  if (!args) return undefined;
+  if (args.receiver_id === "bulkpayment.near") {
+    return "Batch Payment Request" as const;
+  }
+  return "Payment Request" as const;
 }
 
 function isMTTransferProposal(proposal: Proposal): boolean {
@@ -54,8 +79,12 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
       if (isVestingProposal(proposal)) {
         return "Vesting";
       }
-      if (isFTTransferProposal(proposal)) {
-        return "Payment Request";
+      const ftTransferResult = processFTTransferProposal(proposal);
+      if (ftTransferResult) {
+        return ftTransferResult;
+      }
+      if (isBatchPaymentProposal(proposal)) {
+        return "Batch Payment Request";
       }
       if (isMTTransferProposal(proposal)) {
         return "Exchange";

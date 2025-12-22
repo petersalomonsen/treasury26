@@ -17,7 +17,7 @@ export function Address({ address, copyable = false, prefixLength = 8, suffixLen
 
     const prefix = address.slice(0, prefixLength);
     const suffix = address.slice(address.length - suffixLength);
-    const displayedAddress = `${prefix}...${suffix}`;
+    const displayedAddress = address.length > prefixLength + suffixLength ? `${prefix}...${suffix}` : address;
     return <div className="flex items-center gap-2">
         <span>{displayedAddress}</span>
         {copyable && <Button variant="ghost" size="icon-sm" onClick={() => handleCopy(address)}>

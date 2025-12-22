@@ -20,7 +20,7 @@ export function Button({ variant, className: classNameOverride, size, ...props }
 
     switch (size) {
         case "sm":
-            className = cn(className, "py-0.5 px-2.5 h-5");
+            className = cn(className, "py-0.5 px-2.5 h-5 text-xs");
             break;
         default:
             className = "";

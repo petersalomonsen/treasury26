@@ -83,6 +83,11 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/lockup/pool",
             get(handlers::lookup::pool::get_lockup_pool),
         )
+        // Bulk payment endpoints
+        .route(
+            "/api/bulkpayment/get",
+            get(handlers::bulkpayment::get::get_batch_payment),
+        )
         // Intents endpoints
         .route(
             "/api/intents/supported-tokens",

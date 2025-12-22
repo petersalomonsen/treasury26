@@ -6,6 +6,7 @@ import { Policy } from "@/types/policy";
  * This is the user-facing categorization of proposals
  */
 export type ProposalUIKind =
+    | "Batch Payment Request"
     | "Payment Request"
     | "Exchange"
     | "Function Call"
@@ -116,6 +117,15 @@ export interface SwapRequestData {
 }
 
 /**
+ * Data structure for Batch Payment Request proposals
+ */
+export interface BatchPaymentRequestData {
+    tokenId: string;
+    totalAmount: string;
+    batchId: string;
+}
+
+/**
  * Data structure for Unknown proposals
  */
 export interface UnknownData {
@@ -133,6 +143,7 @@ export interface ProposalTypeDataMap {
     Staking: StakingData;
     Vesting: VestingData;
     "Exchange": SwapRequestData;
+    "Batch Payment Request": BatchPaymentRequestData;
     Withdraw: StakingData; // Same as Staking
     Unknown: UnknownData;
 }
@@ -157,6 +168,7 @@ export type ProposalDataExtractor<T extends ProposalUIKind> = (
  */
 export type AnyProposalData =
     | PaymentRequestData
+    | BatchPaymentRequestData
     | FunctionCallData
     | ChangePolicyData
     | ChangeConfigData

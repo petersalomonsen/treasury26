@@ -2,11 +2,13 @@ import { Proposal } from "@/lib/proposals-api";
 import { FunctionCallCell } from "./function-call-cell";
 import { ChangePolicyCell } from "./change-policy-cell";
 import { TokenCell } from "./token-cell";
+import { BatchPaymentCell } from "./batch-payment-cell";
 import { StakingCell } from "./staking-cell";
 import { SwapCell } from "./swap-cell";
 import { extractProposalData } from "../../utils/proposal-extractors";
 import {
   PaymentRequestData,
+  BatchPaymentRequestData,
   FunctionCallData,
   ChangePolicyData,
   StakingData,
@@ -28,6 +30,10 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
     case "Payment Request": {
       const paymentData = data as PaymentRequestData;
       return <TokenCell data={paymentData} />;
+    }
+    case "Batch Payment Request": {
+      const batchPaymentData = data as BatchPaymentRequestData;
+      return <BatchPaymentCell data={batchPaymentData} />;
     }
     case "Function Call": {
       const functionCallData = data as FunctionCallData;

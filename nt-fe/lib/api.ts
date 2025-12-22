@@ -480,3 +480,41 @@ export async function getBatchProfiles(
     return {};
   }
 }
+
+export type PaymentStatus = { Paid: {}, Pending: {}, Failed: {} }
+
+export interface BatchPayment {
+  recipient: string;
+  amount: string;
+  status: PaymentStatus;
+}
+
+export interface BatchPaymentResponse {
+  token_id: string;
+  submitter: string;
+  status: string;
+  payments: BatchPayment[];
+}
+
+/**
+ * Get batch payment details by batch ID
+ * Fetches from backend which queries the batch payment contract
+ */
+export async function getBatchPayment(
+  batchId: string
+): Promise<BatchPaymentResponse | null> {
+  if (!batchId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/bulkpayment/get`;
+
+    const response = await axios.get<BatchPaymentResponse>(url, {
+      params: { batch_id: batchId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting batch payment for ${batchId}`, error);
+    return null;
+  }
+}
