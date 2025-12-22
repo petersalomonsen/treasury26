@@ -509,7 +509,7 @@ export async function getBatchPayment(
     const url = `${BACKEND_API_BASE}/bulkpayment/get`;
 
     const response = await axios.get<BatchPaymentResponse>(url, {
-      params: { batch_id: batchId },
+      params: { batchId: batchId },
     });
 
     return response.data;

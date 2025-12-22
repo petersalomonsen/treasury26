@@ -1,5 +1,5 @@
 import { Tooltip } from "@/components/tooltip";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { Separator } from "@/components/ui/separator";
 import { User } from "@/components/user";
 import { Vote } from "@/lib/proposals-api";
@@ -42,9 +42,9 @@ export function UserVote({ accountId, vote, iconOnly = true }: { accountId: stri
             </Button>
 
         </div>}>
-            <Button variant="ghost" size={"sm"} className="relative p-2 m-0">
+            <Button variant="ghost" className="relative p-2 m-0">
                 <User accountId={accountId} iconOnly={iconOnly} />
-                <div className="absolute left-5.5 bottom-0.5">
+                <div className="absolute left-5.5 bottom-1">
                     {icon}
                 </div>
             </Button>

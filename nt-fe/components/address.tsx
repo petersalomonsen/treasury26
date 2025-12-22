@@ -1,6 +1,6 @@
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "./ui/button";
+import { Button } from "./button";
 
 interface AddressProps {
     address: string;

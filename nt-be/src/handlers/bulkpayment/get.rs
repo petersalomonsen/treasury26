@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use near_api::{AccountId, types::json::U128};
+use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -12,6 +12,7 @@ use crate::{AppState, constants::BATCH_PAYMENT_ACCOUNT_ID};
 
 #[derive(Deserialize)]
 pub struct BatchPaymentQuery {
+    #[serde(rename = "batchId")]
     pub batch_id: String,
 }
 
@@ -50,7 +51,7 @@ pub async fn get_batch_payment(
         .fetch_from(&state.network)
         .await
         .map_err(|e| {
-            eprintln!("Error fetching batch payment: {}", e);
+            eprintln!("Error fetching batch payment: {}: {}", params.batch_id, e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to fetch batch payment: {}", e),

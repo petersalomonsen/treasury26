@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useUserTreasuries } from "@/hooks/use-treasury-queries";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import Image from "next/image";
 import Link from "next/link";
 

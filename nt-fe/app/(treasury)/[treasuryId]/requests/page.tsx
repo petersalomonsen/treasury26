@@ -9,7 +9,7 @@ import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProposalsTable } from "@/features/proposals";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { Download } from "lucide-react";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";

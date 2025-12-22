@@ -1,6 +1,6 @@
 import { useState, } from "react";
 import { Control, FieldValues, Path, } from "react-hook-form";
-import { Button } from "./ui/button";
+import { Button } from "./button";
 import { ArrowLeftIcon, Loader2 } from "lucide-react";
 import { FormDescription, FormField, FormLabel } from "./ui/form";
 import { Switch } from "./ui/switch";

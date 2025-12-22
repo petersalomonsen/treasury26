@@ -5,7 +5,7 @@ import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { ChevronDown } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "./button";
 import { LargeInput } from "./large-input";
 import { formatBalance } from "@/lib/utils";
 import { TreasuryAsset } from "@/lib/api";

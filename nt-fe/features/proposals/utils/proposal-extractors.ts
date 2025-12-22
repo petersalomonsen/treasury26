@@ -334,7 +334,7 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
   return {
     tokenId: functionCall.receiver_id,
     totalAmount: args.amount || "0",
-    batchId: args.msg || "",
+    batchId: String(args.msg) || "",
   };
 }
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Tooltip } from "./tooltip";
-import { Button } from "./ui/button";
+import { Button } from "./button";
 import { cva } from "class-variance-authority";
 
 export interface InfoItem {
