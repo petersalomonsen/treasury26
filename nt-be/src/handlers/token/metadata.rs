@@ -54,14 +54,15 @@ pub async fn get_token_metadata(
         )
     })?;
 
-    let token = supported_tokens
-        .into_iter()
-        .find(|t| {
-            t.near_token_id.as_ref() == Some(&params.token_id)
-                || t.intents_token_id.as_ref() == Some(&params.token_id)
-                || t.asset_name.to_lowercase() == params.token_id.to_lowercase()
-                || t.contract_address == params.token_id
-        })
+    let mut tokens = supported_tokens.into_iter().filter(|t| {
+        t.near_token_id.as_ref() == Some(&params.token_id)
+            || t.intents_token_id.as_ref() == Some(&params.token_id)
+            || t.asset_name.to_lowercase() == params.token_id.to_lowercase()
+            || t.contract_address == params.token_id
+    });
+    let token = tokens
+        .find(|t| t.defuse_asset_id.starts_with(&params.network))
+        .or_else(|| tokens.next())
         .ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -80,6 +81,12 @@ pub async fn get_token_metadata(
         chain_name: Some(token.chain_name),
     };
 
+    if (metadata.decimals != 24 && params.token_id == "wrap.near") {
+        println!("Tokens: {:#?}", tokens);
+        println!("Token {} has 9 decimals", params.token_id);
+        println!("Token metadata: {:?}", metadata);
+        println!("Params: {} / {}", params.token_id, params.network);
+    }
     if is_near {
         metadata.name = "NEAR".to_string();
         metadata.symbol = "NEAR".to_string();
