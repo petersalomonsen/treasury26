@@ -54,15 +54,20 @@ pub async fn get_token_metadata(
         )
     })?;
 
-    let mut tokens = supported_tokens.into_iter().filter(|t| {
-        t.near_token_id.as_ref() == Some(&params.token_id)
-            || t.intents_token_id.as_ref() == Some(&params.token_id)
-            || t.asset_name.to_lowercase() == params.token_id.to_lowercase()
-            || t.contract_address == params.token_id
-    });
+    let tokens: Vec<_> = supported_tokens
+        .into_iter()
+        .filter(|t| {
+            t.near_token_id.as_ref() == Some(&params.token_id)
+                || t.intents_token_id.as_ref() == Some(&params.token_id)
+                || t.asset_name.to_lowercase() == params.token_id.to_lowercase()
+                || t.contract_address == params.token_id
+        })
+        .collect();
     let token = tokens
+        .iter()
         .find(|t| t.defuse_asset_id.starts_with(&params.network))
-        .or_else(|| tokens.next())
+        .or_else(|| tokens.first())
+        .cloned()
         .ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,

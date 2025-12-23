@@ -22,7 +22,7 @@ export function Rate({ tokenIn, networkIn, tokenOut, networkOut, amountIn, amoun
     const amount2 = amountOut ? formatBalance(amountOut.toString(), tokenOutData?.decimals || 24) : amountOutWithDecimals;
 
     const cost = useMemo(() => {
-        if (!amount1 || !amount2) {
+        if (!amount1 || !amount2 || amount1 === "0" || amount2 === "0") {
             return "N/A";
         }
         return Big(amount2).div(Big(amount1)).toFixed(6);
