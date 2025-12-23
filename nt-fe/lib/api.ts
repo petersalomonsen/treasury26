@@ -3,10 +3,43 @@ import axios from "axios";
 import Big from "big.js";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
+
+export interface Timezone {
+  utc: string;
+  value: string;
+  name: string;
+}
+
+/**
+ * Get list of available timezones
+ */
+export async function getTimezones(): Promise<Timezone[]> {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api/proxy/timezones`,
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Failed to fetch timezones");
+      return [];
+    }
+
+    const data = await response.json();
+    return data || [];
+  } catch (error) {
+    console.error("Error getting timezones:", error);
+    return [];
+  }
+}
 export interface TreasuryMetadata {
   primaryColor?: string;
   flagLogo?: string;
-  theme?: string;
 }
 
 export interface TreasuryConfig {
@@ -25,7 +58,7 @@ export interface Treasury {
  * Fetches from backend which includes config data from on-chain
  */
 export async function getUserTreasuries(
-  accountId: string
+  accountId: string,
 ): Promise<Treasury[]> {
   if (!accountId) return [];
 
@@ -79,7 +112,7 @@ interface TreasuryAssetRaw {
  * Returns transformed data with calculated USD values and weights
  */
 export async function getTreasuryAssets(
-  treasuryId: string
+  treasuryId: string,
 ): Promise<TreasuryAssets> {
   if (!treasuryId) return { tokens: [], totalBalanceUSD: Big(0) };
 
@@ -89,7 +122,6 @@ export async function getTreasuryAssets(
     const response = await axios.get<TreasuryAssetRaw[]>(url, {
       params: { accountId: treasuryId },
     });
-
 
     // Transform raw tokens with USD values
     const tokensWithUSD = response.data.map((token) => {
@@ -114,13 +146,15 @@ export async function getTreasuryAssets(
     // Calculate total USD value
     const totalUSD = tokensWithUSD.reduce(
       (sum, token) => sum.add(token.balanceUSD),
-      Big(0)
+      Big(0),
     );
 
     // Calculate weights
     const tokens: TreasuryAsset[] = tokensWithUSD.map((token) => ({
       ...token,
-      weight: totalUSD.gt(0) ? Big(token.balanceUSD).div(totalUSD).mul(100).toNumber() : 0,
+      weight: totalUSD.gt(0)
+        ? Big(token.balanceUSD).div(totalUSD).mul(100).toNumber()
+        : 0,
     }));
 
     return {
@@ -146,7 +180,7 @@ export interface TokenBalanceHistory {
   "1W": BalanceHistoryEntry[];
   "1M": BalanceHistoryEntry[];
   "1Y": BalanceHistoryEntry[];
-  "All": BalanceHistoryEntry[];
+  All: BalanceHistoryEntry[];
 }
 
 /**
@@ -155,7 +189,7 @@ export interface TokenBalanceHistory {
  */
 export async function getTokenBalanceHistory(
   accountId: string,
-  tokenId: string
+  tokenId: string,
 ): Promise<TokenBalanceHistory | null> {
   if (!accountId || !tokenId) return null;
 
@@ -183,7 +217,10 @@ export interface TokenPrice {
  * Get price for a single token (supports both NEAR and FT tokens)
  * Fetches from backend which aggregates data from multiple price sources
  */
-export async function getTokenPrice(tokenId: string, network: string): Promise<TokenPrice | null> {
+export async function getTokenPrice(
+  tokenId: string,
+  network: string,
+): Promise<TokenPrice | null> {
   if (!tokenId) return null;
 
   try {
@@ -195,7 +232,10 @@ export async function getTokenPrice(tokenId: string, network: string): Promise<T
 
     return response.data;
   } catch (error) {
-    console.error(`Error getting price for token ${tokenId} / ${network}`, error);
+    console.error(
+      `Error getting price for token ${tokenId} / ${network}`,
+      error,
+    );
     return null;
   }
 }
@@ -205,7 +245,7 @@ export async function getTokenPrice(tokenId: string, network: string): Promise<T
  * More efficient than making individual requests for each token
  */
 export async function getBatchTokenPrices(
-  tokenIds: string[]
+  tokenIds: string[],
 ): Promise<TokenPrice[]> {
   if (!tokenIds || tokenIds.length === 0) return [];
 
@@ -213,7 +253,7 @@ export async function getBatchTokenPrices(
     const url = `${BACKEND_API_BASE}/token/price/batch`;
 
     const response = await axios.get<TokenPrice[]>(url, {
-      params: { tokenIds: tokenIds.join(',') },
+      params: { tokenIds: tokenIds.join(",") },
     });
 
     return response.data;
@@ -237,7 +277,7 @@ export interface TokenBalance {
 export async function getTokenBalance(
   accountId: string,
   tokenAddress: string,
-  network: string
+  network: string,
 ): Promise<TokenBalance | null> {
   if (!accountId || !tokenAddress || !network) return null;
 
@@ -250,7 +290,10 @@ export async function getTokenBalance(
 
     return response.data;
   } catch (error) {
-    console.error(`Error getting balance for ${accountId} / ${tokenAddress} / ${network}`, error);
+    console.error(
+      `Error getting balance for ${accountId} / ${tokenAddress} / ${network}`,
+      error,
+    );
     return null;
   }
 }
@@ -261,7 +304,7 @@ export async function getTokenBalance(
  */
 export async function getBatchTokenBalances(
   accountId: string,
-  tokenIds: string[]
+  tokenIds: string[],
 ): Promise<TokenBalance[]> {
   if (!accountId || !tokenIds || tokenIds.length === 0) return [];
 
@@ -269,7 +312,7 @@ export async function getBatchTokenBalances(
     const url = `${BACKEND_API_BASE}/user/balance/batch`;
 
     const response = await axios.get<TokenBalance[]>(url, {
-      params: { accountId, tokenIds: tokenIds.join(',') },
+      params: { accountId, tokenIds: tokenIds.join(",") },
     });
 
     return response.data;
@@ -280,11 +323,34 @@ export async function getBatchTokenBalances(
 }
 
 /**
+ * Get treasury config for a specific treasury
+ * Fetches from backend which queries the treasury contract for config data
+ */
+export async function getTreasuryConfig(
+  treasuryId: string,
+): Promise<Treasury | null> {
+  if (!treasuryId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/treasury/config`;
+
+    const response = await axios.get<Treasury>(url, {
+      params: { treasuryId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting treasury config for ${treasuryId}`, error);
+    return null;
+  }
+}
+
+/**
  * Get treasury policy including roles, permissions, and approval settings
  * Fetches from backend which queries the treasury contract
  */
 export async function getTreasuryPolicy(
-  treasuryId: string
+  treasuryId: string,
 ): Promise<Policy | null> {
   if (!treasuryId) return null;
 
@@ -319,7 +385,7 @@ export interface StorageDepositRegistration {
  */
 export async function getStorageDepositIsRegistered(
   accountId: string,
-  tokenId: string
+  tokenId: string,
 ): Promise<boolean> {
   if (!accountId || !tokenId) return false;
 
@@ -332,7 +398,10 @@ export async function getStorageDepositIsRegistered(
 
     return response.data;
   } catch (error) {
-    console.error(`Error getting storage deposit is registered for ${accountId} / ${tokenId}`, error);
+    console.error(
+      `Error getting storage deposit is registered for ${accountId} / ${tokenId}`,
+      error,
+    );
     return false;
   }
 }
@@ -348,7 +417,7 @@ export interface StorageDepositRequest {
  * Re-uses individual cache entries on the backend rather than caching the full batch query
  */
 export async function getBatchStorageDepositIsRegistered(
-  requests: StorageDepositRequest[]
+  requests: StorageDepositRequest[],
 ): Promise<StorageDepositRegistration[]> {
   if (!requests || requests.length === 0) return [];
 
@@ -384,7 +453,7 @@ export interface TokenMetadata {
  */
 export async function getTokenMetadata(
   tokenId: string,
-  network: string
+  network: string,
 ): Promise<TokenMetadata | null> {
   if (!tokenId || !network) return null;
 
@@ -397,7 +466,10 @@ export async function getTokenMetadata(
 
     return response.data;
   } catch (error) {
-    console.error(`Error getting metadata for token ${tokenId} / ${network}`, error);
+    console.error(
+      `Error getting metadata for token ${tokenId} / ${network}`,
+      error,
+    );
     return null;
   }
 }
@@ -407,9 +479,7 @@ export async function getTokenMetadata(
  * Fetches from backend which queries the lockup contract on the blockchain
  * Returns the pool account ID if registered, null otherwise
  */
-export async function getLockupPool(
-  accountId: string
-): Promise<string | null> {
+export async function getLockupPool(accountId: string): Promise<string | null> {
   if (!accountId) return null;
 
   try {
@@ -440,7 +510,7 @@ export interface ProfileData {
  * Fetches from backend which queries social.near contract
  */
 export async function getProfile(
-  accountId: string
+  accountId: string,
 ): Promise<ProfileData | null> {
   if (!accountId) return null;
 
@@ -463,7 +533,7 @@ export async function getProfile(
  * More efficient than making individual requests for each account
  */
 export async function getBatchProfiles(
-  accountIds: string[]
+  accountIds: string[],
 ): Promise<Record<string, ProfileData>> {
   if (!accountIds || accountIds.length === 0) return {};
 
@@ -471,7 +541,7 @@ export async function getBatchProfiles(
     const url = `${BACKEND_API_BASE}/user/profile/batch`;
 
     const response = await axios.get<Record<string, ProfileData>>(url, {
-      params: { accountIds: accountIds.join(',') },
+      params: { accountIds: accountIds.join(",") },
     });
 
     return response.data;

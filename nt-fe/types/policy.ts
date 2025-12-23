@@ -4,7 +4,7 @@
  */
 
 export type RoleKind =
-  | { Everyone: {} }
+  | "Everyone"
   | { Member: string } // NearToken as string
   | { Group: string[] }; // Set of AccountIds
 
@@ -26,11 +26,9 @@ export interface UserInfo {
 
 export type WeightOrRatio =
   | string // U128 as string
-  | { Ratio: [number, number] }; // (numerator, denominator)
+  | [number, number]; // (numerator, denominator)
 
-export type WeightKind =
-  | "TokenWeight"
-  | "RoleWeight";
+export type WeightKind = "TokenWeight" | "RoleWeight";
 
 export interface VotePolicy {
   /** Kind of weight to use for votes */
