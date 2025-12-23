@@ -125,8 +125,8 @@ export function getApproversAndThreshold(daoPolicy: Policy, accountId: string, k
   let everyoneHasAccess = false;
   // if group kind is everyone, current user will have access
   groupWithPermission.map((i) => {
-    approversGroup = approversGroup.concat(("Group" in i.kind) ? i.kind.Group : []);
-    everyoneHasAccess = "Everyone" in i.kind;
+    approversGroup = approversGroup.concat(typeof i.kind === "object" && "Group" in i.kind ? i.kind.Group : []);
+    everyoneHasAccess = typeof i.kind === "string" && i.kind === "Everyone";
     const votePolicy =
       Object.values(i?.vote_policy?.[kind] ?? {}).length > 0
         ? i.vote_policy[kind]
@@ -207,7 +207,7 @@ export function hasPermission(
  * Check if an account is a member of a role
  */
 function checkRoleMembership(roleKind: RoleKind, accountId: string): boolean {
-  if ("Everyone" in roleKind) {
+  if (typeof roleKind === "string" && roleKind === "Everyone") {
     return true;
   }
 

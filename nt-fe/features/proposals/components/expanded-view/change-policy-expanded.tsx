@@ -13,8 +13,8 @@ interface ChangePolicyExpandedProps {
 function getThresholdFromPolicy(policy: VotePolicy): { requiredVotes: number; approverAccounts: number } {
   if (typeof policy.threshold === "string") {
     return { requiredVotes: parseInt(policy.threshold), approverAccounts: parseInt(policy.threshold) };
-  } else if (typeof policy.threshold === "object" && "Ratio" in policy.threshold) {
-    return { requiredVotes: policy.threshold.Ratio[0], approverAccounts: policy.threshold.Ratio[1] };
+  } else if (Array.isArray(policy.threshold) && policy.threshold.length === 2) {
+    return { requiredVotes: policy.threshold[0], approverAccounts: policy.threshold[1] };
   }
   return { requiredVotes: 0, approverAccounts: 0 };
 }
@@ -115,14 +115,14 @@ function FullPolicyView({ data }: { data: ChangePolicyData }) {
             <div key={index} className="bg-card p-3 rounded-lg border flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <span className="font-semibold">{role.name}</span>
-                {"Group" in role.kind && (
+                {typeof role.kind === "object" && "Group" in role.kind && (
                   <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs">
                     {role.kind.Group.length} member{role.kind.Group.length !== 1 ? "s" : ""}
                   </span>
                 )}
               </div>
 
-              {"Group" in role.kind && role.kind.Group.length > 0 && (
+              {typeof role.kind === "object" && "Group" in role.kind && role.kind.Group.length > 0 && (
                 <div>
                   <span className="text-xs text-muted-foreground">Members:</span>
                   <div className="flex flex-wrap gap-1 mt-1">

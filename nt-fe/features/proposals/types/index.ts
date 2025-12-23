@@ -155,7 +155,7 @@ export interface BatchPaymentRequestData {
  * Data structure for Unknown proposals
  */
 export interface UnknownData {
-    proposalType: ProposalPermissionKind;
+    proposalType?: ProposalPermissionKind;
 }
 
 /**
