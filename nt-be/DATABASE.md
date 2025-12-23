@@ -1,15 +1,29 @@
 # NEAR Treasury Backend - Database Setup
 
+## Prerequisites
+
+Make sure Docker is running. If using Colima on macOS:
+
+```bash
+colima start
+```
+
 ## Quick Start
 
 ### 1. Start the Database
 
 ```bash
 cd nt-be
-docker-compose up -d postgres
+docker compose up -d postgres
 ```
 
 This will start a PostgreSQL 16 container on port 5432.
+
+To stop the database:
+
+```bash
+docker compose down
+```
 
 ### 2. Set Up Environment Variables
 
