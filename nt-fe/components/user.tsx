@@ -3,9 +3,10 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Button } from "./button";
 import { Copy } from "lucide-react";
-import { Tooltip, TooltipSeparator } from "./tooltip";
+import { Tooltip } from "./tooltip";
 import { TooltipTrigger } from "./ui/tooltip";
 import { toast } from "sonner";
+import { Separator } from "./ui/separator";
 
 interface UserProps {
     accountId: string;
@@ -35,7 +36,7 @@ export function TooltipUser({ accountId, children, triggerProps }: TooltipUserPr
     return (
         <Tooltip content={<div className="flex flex-col gap-2">
             <User accountId={accountId} />
-            <TooltipSeparator />
+            <Separator />
             <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={onCopy}>
                 <Copy className="w-5 h-5" />
                 Copy Wallet Address
