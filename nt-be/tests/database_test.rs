@@ -11,7 +11,7 @@ impl TestServer {
     async fn start() -> Self {
         // Start the server in the background
         let process = Command::new("cargo")
-            .args(&["run"])
+            .args(&["run", "--bin", "nf-be"])
             .env("PORT", "3001")
             .env("RUST_LOG", "info")
             .spawn()
