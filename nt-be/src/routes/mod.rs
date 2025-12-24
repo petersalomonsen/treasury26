@@ -1,7 +1,7 @@
 use axum::{
+    Json, Router,
     extract::State,
     http::StatusCode,
-    Json, Router,
     routing::{get, post},
 };
 use serde_json::{Value, json};
@@ -9,16 +9,18 @@ use std::sync::Arc;
 
 use crate::{AppState, handlers};
 
-async fn health_check(State(state): State<Arc<AppState>>) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+async fn health_check(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // Test database connection
     let db_connected = sqlx::query("SELECT 1")
         .fetch_one(&state.db_pool)
         .await
         .is_ok();
-    
+
     let pool_size = state.db_pool.size();
     let idle_connections = state.db_pool.num_idle();
-    
+
     if !db_connected {
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
@@ -29,10 +31,10 @@ async fn health_check(State(state): State<Arc<AppState>>) -> Result<Json<Value>,
                     "connected": false,
                     "error": "Database connection failed"
                 }
-            }))
+            })),
         ));
     }
-    
+
     Ok(Json(json!({
         "status": "healthy",
         "timestamp": chrono::Utc::now().to_rfc3339(),

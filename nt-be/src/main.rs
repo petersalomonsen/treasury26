@@ -18,7 +18,7 @@ async fn main() {
     let state = Arc::new(
         nf_be::init_app_state()
             .await
-            .expect("Failed to initialize application state")
+            .expect("Failed to initialize application state"),
     );
 
     let cors = CorsLayer::new()
@@ -33,9 +33,7 @@ async fn main() {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
     let addr = format!("0.0.0.0:{}", port);
 
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
 
     println!("Server running on {}", addr);
 
