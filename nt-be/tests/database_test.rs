@@ -49,7 +49,7 @@ impl Drop for TestServer {
 }
 
 #[tokio::test]
-async fn test_health_endpoint_with_server() {
+async fn test_health_endpoint() {
     // Load environment variables
     dotenvy::dotenv().ok();
     
@@ -64,31 +64,10 @@ async fn test_health_endpoint_with_server() {
         .await
         .expect("Failed to send request");
     
-    // Assert response
+    // Assert response status
     assert_eq!(response.status(), 200);
     
     // Parse response body
-    let json: serde_json::Value = response.json().await.expect("Failed to parse JSON");
-    
-    // Check that database is connected
-    assert_eq!(json["status"], "healthy");
-    assert_eq!(json["database"]["connected"], true);
-    assert!(json["database"]["pool_size"].as_u64().unwrap() > 0);
-}
-
-#[tokio::test]
-async fn test_health_endpoint_response_structure() {
-    dotenvy::dotenv().ok();
-    
-    let server = TestServer::start().await;
-    
-    let client = reqwest::Client::new();
-    let response = client
-        .get(server.url("/api/health"))
-        .send()
-        .await
-        .expect("Failed to send request");
-    
     let json: serde_json::Value = response.json().await.expect("Failed to parse JSON");
     
     // Verify response structure
@@ -96,8 +75,16 @@ async fn test_health_endpoint_response_structure() {
     assert!(json.get("timestamp").is_some());
     assert!(json.get("database").is_some());
     
+    // Check status value
+    assert_eq!(json["status"], "healthy");
+    
+    // Verify database section
     let database = &json["database"];
     assert!(database.get("connected").is_some());
     assert!(database.get("pool_size").is_some());
     assert!(database.get("idle_connections").is_some());
+    
+    // Check that database is actually connected
+    assert_eq!(database["connected"], true);
+    assert!(database["pool_size"].as_u64().unwrap() > 0);
 }
