@@ -1,73 +1,140 @@
 # Balance Change Data Collection Implementation Plan
 
-The purpose is to collect data to fill in the table `balance_changes`. The concept is simple:
+## Overview
 
-- Define a starting point, in most cases that will be the block_height of the current time, but there might also be scenarios where we want to start from an earlier block_height to capture only historic data
-- From the chosen block height, ask the following: what is the balance difference compared to the previous recorded balance for that token/account (If we don't have a previous recorded balance, then let's say it is zero, since we don't have any recorded history ).
-    - If the difference is zero, then assume nothing has happened in the interval between the chosen block and the previous recorded block
-    - If there is a difference, search backwards for a block with a change, record the balance before and after that block in a new balance change entry
-- Iterate through the recorded data. If the balance_after of one record does not match the balance_before of the next record for the given token/account - then consider it as a "gap", and search backwards between these records for a block with a change
-    - Iterate through the recorded data until all gaps are filled
+This implementation collects balance change data for NEAR accounts to populate the `balance_changes` table. The system uses a gap-filling strategy that can resume from any point, combining third-party APIs with RPC fallback for reliable data collection.
 
-## How to search backwards
+**Reference Implementation:** A working TypeScript version exists at https://github.com/petersalomonsen/near-accounting-export/. This Rust implementation aims to improve structure and simplify the design while maintaining the same functionality.
 
-### Third party API approach
+## Core Algorithm
 
-Use APIs like nearblocks, pikespeak and NEAR Intents explorer API to query transactions for the given account and token in the specified range. Order descending and take the last. Cache results in memory to avoid querying the API again for the same data.
+The data collection follows a gap-detection and filling strategy:
 
-### RPC Fallback approach
+1. **Define Starting Point:** Choose a block_height (typically current time, but can be historical for backfilling)
 
-If unable to resolve the gap from third party API data, use archival RPC to query balances at specific block heights.
+2. **Check for Differences:** Compare the balance at the starting block with the previous recorded balance for that token/account
+   - If no previous record exists, assume balance_before is zero (no recorded history)
+   - If difference is zero: assume no changes occurred in the interval
+   - If difference exists: search backwards for the block with the change
 
-- Query the block in the middle of the current block searching range
-    - If the last half has a change, then select that as the current block searching range
-    - If only the first half has a change, then select that as the current block searching range
-- Loop this until the exact block of change is found
+3. **Validate Continuity:** Scan existing records to find gaps where `balance_after` of one record doesn't match `balance_before` of the next record for the same token/account
 
-## How to analyze/record a block that has balance changes
+4. **Fill Gaps:** Search backwards between gap boundaries to find blocks with balance changes
 
-Simply query the balance for the specified account and token on the block before, and after and record the values in the balance change entry
+5. **Iterate:** Continue until all gaps are filled and records form a continuous chain
 
-## How to discover which tokens to scan
+**Resume Strategy:** The system can resume at any starting point. No sync_status table is needed - scanning existing data for gaps automatically identifies what's missing.
 
-When starting with no data, the first thing to check is the native NEAR balance. If the account has interacted with Fungible Tokens there will also be balance changes in NEAR for gas fees when interacting with the Fungible Token contracts. When the NEAR balance change is caused by a contract interaction, then the receipts (that can span over multiple following blocks) of that transaction should also be checked for token transfer events, which also then will reveal which Fungible Tokens that changed balances. NEAR Intents follow a similar patterns, though it is also possible to transfer tokens without a NEAR transaction initiated by the account owner ( the intent resolution can be posted to the intents.near contract by the solver, and so it is not seen as a transaction initiated by the account ). It is easy to query the full asset balance on NEAR Intents, as you can just call `mt_tokens_for_owner` to get the list of all tokens that the account holds on NEAR Intents, and then call `mt_batch_balance_of` to get the balances. For NEAR Intents there should be frequent balance snapshots ( e.g. twice per day ) to reduce the chance of missing transfers in and out on the same day.
+## Backward Search Strategy
 
-# Questions and answers
+### Primary: Third-Party API Approach
 
-*Starting Point Clarification: Consider adding a "sync_status" tracking mechanism to persist where each account/token is synced to, so you can resume after interruptions.*
+Query APIs (nearblocks, pikespeak, NEAR Intents explorer) for transactions in the specified block range:
+- Filter by account and token
+- Order results descending
+- Take the last transaction in range
+- **Cache results in memory** to avoid redundant API calls
 
-You should be able to resume at any starting point. The existing data should be checked for gaps from the starting point you define. No sync_status should be needed here, as scanning through existing data for gaps should be able to identify what is missing.
+**Rate Limiting:** When APIs hit rate limits, fall back to RPC approach. Resume using APIs when they become available again.
 
-*API Rate Limiting: The plan should mention handling rate limits for third-party APIs (nearblocks, pikespeak) and potentially implementing exponential backoff.*
+### Fallback: RPC Binary Search
 
-The fallback is to the RPC binary search, but should resume to third-party APIs when available.
+When APIs fail to resolve gaps, use archival RPC with binary search:
+Recording Balance Changes
 
-*Transaction Actions Field: The current database has an actions JSONB field. The plan should specify what data to store there - full transaction details, receipt data, or just the relevant events?*
+### Data Collection per Block
 
-The transaction actions are the arguments to the transactions, and is different from receipt logs where the events are visible. The arguments and outcome should be stored separately.
+For each block with a balance change:
 
-The `actions` JSONB field should stay as it is, storing the transaction arguments on the initiating block. 
+1. **Query balances:** Get balance for the account/token on the block before and after the receipt execution
+2. **Calculate difference:** Determine the amount changed
+3. **Get block timestamp:** Query the block from RPC to get timestamp (see [reference implementation](https://github.com/petersalomonsen/near-accounting-export/blob/main/scripts/balance-tracker.ts#L1258))
+4. **Determine counterparty:** Extract from transfer events - the account that sent or received tokens (not to be confused with transaction signer or receipt predecessor)
+5. **Store transaction data:**
+   - `actions` field: Transaction arguments from the initiating block
+   - `receipt` field: Full receipt data including logs and events/outcomes
+6. Token Discovery
 
-The `raw_data` JSONB field can contain the full receipt data, including the logs that also contains the events/outcomes. We can rename this to `receipt`.
+### Starting with NEAR Native Balance
 
-*Counterparty Discovery: Should clarify how to determine the counterparty field - from transfer events, receipt predecessors, or transaction signer?*
+When no data exists, begin by checking the native NEAR balance. This reveals the account's primary activity.
 
-The counterparty is always the account that sent or received the tokens that have changed balance. So should not be confused with predecessor or signer, which might have not been sending / receiving the token that we are recording the balance change for.
+### Discovering Fungible Tokens (NEP-141)
 
-*Multi-Receipt Transactions: NEAR transactions can span multiple blocks with receipts. Should specify how to handle this - which block_height to use (transaction block vs receipt execution block)?*
+Fungible token interactions leave traces in NEAR balance changes through gas fees:
+- Monitor NEAR balance changes caused by contract interactions
+- When found, examine receipts (which may span multiple subsequent blocks)
+- Parse receipt logs for token transfer events
+- Events reveal which fungible tokens changed balances
 
-The records are per receipt execution block. We are always checking the balance of a token before and after a receipt execution block.
+### Discovering NEAR Intents Tokens
 
-*Intents Edge Case: You mention intents can be resolved without account-initiated transactions. Should there be a separate polling mechanism for mt_tokens_for_owner to catch these, or rely on periodic balance checks?*
+**Standard Case:** Follow the same pattern as fungible tokens - look for NEAR gas fees and analyze receipts.
 
-We need to get as much transfers as possible from the third party APIs, but in case they don't fill the gaps, we need additional frequent polling to ensure that we don't miss transfers in and out within short timeframes ( e.g. the same day ).
+**Special Case:** Intent resolutions can be posted by solvers without account-initiated transactions. These won't appear as transactions from the account owner.
 
-*Gap Detection on Startup: When resuming, should it validate existing records for gaps, or trust the existing data?*
+**Solution:** Query the NEAR Intents contract directly:
+- Call `mt_tokens_for_owner` to list all tokens the account holds
+- Call `mt_batch_balance_of` to get current balances
+- **Frequent polling:** Check at least twice per day to catch same-day transfers in/out that third-party APIs might miss
 
-Yes, it should always ensure that the records are connected so that the balance_after matches balance_before on the next record.
+This polling acts as a safety net when APIs don't fill all gaps.
 
-*Error Handling: What happens if APIs are unavailable or RPC nodes are out of sync? Should it mark gaps as "unresolved" and retry later?*
+## Database Schema Changes
 
+**Required Migration:** Rename the `raw_data` JSONB column to `receipt` to better reflect its purpose of storing full receipt data including logs and events.
+
+**Field Definitions:**
+- `actions`: Transaction arguments from the initiating block
+- `receipt`: Full receipt data with logs and events/outcomes
+- `counterparty`: The account that sent or received the tokens (not signer or predecessor)
+- `block_height`: Receipt execution block (not transaction initiation block)
+- `block_timestamp`: Timestamp from the receipt execution block
+
+## Performance Strategy
+
+**Sequential Processing:**
+- Process one account at a time
+- Process one block at a time
+- Alternate between accounts to avoid hitting API rate limits
+
+**Benefits:**
+- Prevents API rate limit exhaustion
+- Simpler error recovery
+- Easier to reason about state
+
+## Error Handling and Resumption
+
+**Philosophy:** Fail fast and resume cleanly.
+
+**On Errors (API unavailable, RPC out of sync, etc.):**
+1. Exit the data collection job
+2. When retriggered, scan existing data for gaps
+3. Resume from gap boundaries automatically
+
+**No Need For:**
+- Sync status tracking
+- Complex error retry logic
+- State persistence beyond database records
+
+The gap-detection algorithm naturally handles resumption by validating that `balance_after` of each record matches `balance_before` of the next record for the same account/token pair.
+
+## Implementation Checklist
+
+- [ ] Database migration: Rename `raw_data` to `receipt`
+- [ ] Implement gap detection algorithm (scan for disconnected balance chains)
+- [ ] Implement third-party API clients (nearblocks, pikespeak, NEAR Intents)
+- [ ] Implement RPC binary search fallback
+- [ ] Implement balance query logic (before/after receipt execution)
+- [ ] Implement token discovery (NEAR, FT, Intents)
+- [ ] Implement counterparty extraction from transfer events
+- [ ] Implement block timestamp retrieval from RPC
+- [ ] Implement in-memory API response caching
+- [ ] Implement account alternation for rate limit avoidance
+- [ ] Add NEAR Intents polling (twice daily)
+- [ ] Integration tests with real account data
+- [ ] Error handling tests (API failures, RPC unavailable)
+- [ ] Resume/gap-filling tests
 Since we can resume at any time, the data collection job can exit in such cases, and when retriggered, it will figure out where the gap is and start from there.
 
 *Block timestamp*
