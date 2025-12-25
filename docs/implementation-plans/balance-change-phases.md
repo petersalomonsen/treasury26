@@ -211,11 +211,11 @@ pub async fn get_balance_change_at_block(
 ```rust
 #[tokio::test]
 #[ignore] // Requires RPC access
-async fn test_query_testnet_balance() {
+async fn test_query_mainnet_balance() {
     let balance = get_balance_at_block(
-        "test.testnet",
+        "webassemblymusic-treasury.sputnik-dao.near",
         "NEAR",
-        123456789,
+        150000000, // Block from test data range
     ).await.unwrap();
     assert!(!balance.is_empty());
 }
@@ -223,7 +223,8 @@ async fn test_query_testnet_balance() {
 
 **Review criteria:**
 - Handles NEAR native vs FT vs Intents tokens
-- Integration test validates against testnet
+- Integration test validates against mainnet with real test data
+- Uses limited block range from existing test data (139109383-176950919)
 - Unit tests cover error cases
 - Function length < 50 lines each
 
@@ -236,7 +237,7 @@ async fn test_query_testnet_balance() {
 **Add to:** `src/services/balance_query.rs` or new `src/services/block_info.rs`
 
 **TDD approach:**
-1. Write integration test querying known testnet block
+1. Write integration test querying known mainnet block from test data
 2. Implement with caching
 3. Test validates timestamp matches expected
 
@@ -261,7 +262,7 @@ pub async fn get_block_timestamp(
 **New module:** `src/services/binary_search.rs`
 
 **TDD approach:**
-1. Write integration test with known balance change block on testnet
+1. Write integration test with known balance change block on mainnet (from test data)
 2. Write unit tests with mocked balance queries
 3. Implement binary search
 4. Tests find exact block
@@ -284,7 +285,7 @@ pub async fn find_balance_change_block(
 - Single block range → returns correctly
 
 **Integration test:**
-- Query known testnet transaction
+- Query known mainnet transaction from test data
 - Binary search finds the block
 - Validates it's the correct block
 
@@ -331,10 +332,10 @@ impl NearBlocksClient {
 async fn test_nearblocks_real_query() {
     let client = NearBlocksClient::new();
     let txs = client.get_transactions(
-        "test.testnet",
+        "webassemblymusic-treasury.sputnik-dao.near",
         "NEAR",
-        120000000,
-        120010000,
+        150000000, // Block from test data range
+        150010000,
     ).await.unwrap();
     // Validate response structure
 }
@@ -447,7 +448,7 @@ pub async fn find_last_transaction_in_range(
 **New module:** `src/services/counterparty_extractor.rs`
 
 **TDD approach:**
-1. Collect real receipt JSON examples from testnet
+1. Collect real receipt JSON examples from mainnet (from test data)
 2. Write tests with these examples
 3. Implement extraction logic
 4. Tests pass for all examples
@@ -481,7 +482,7 @@ pub fn extract_counterparty(
 **New module:** `src/services/token_discovery.rs`
 
 **TDD approach:**
-1. Write integration test with known testnet account
+1. Write integration test with known mainnet account (from test data)
 2. Implement NEAR balance check
 3. Test validates balance detection
 
@@ -499,8 +500,8 @@ pub async fn check_near_balance_at_block(
 #[ignore] // Requires RPC
 async fn test_discover_near_balance(pool: PgPool) {
     let change = check_near_balance_at_block(
-        "test.testnet",
-        123456789,
+        "webassemblymusic-treasury.sputnik-dao.near",
+        150000000, // Block from test data range
     ).await.unwrap();
     // Validate change is detected
 }
@@ -520,7 +521,7 @@ async fn test_discover_near_balance(pool: PgPool) {
 **Add to:** `src/services/token_discovery.rs`
 
 **TDD approach:**
-1. Collect real FT transfer receipt from testnet
+1. Collect real FT transfer receipt from mainnet (from test data)
 2. Write test with this receipt
 3. Implement FT discovery
 4. Test extracts correct token IDs
