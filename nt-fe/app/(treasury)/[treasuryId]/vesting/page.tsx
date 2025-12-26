@@ -7,7 +7,7 @@ import { InfoDisplay } from "@/components/info-display";
 import { InputBlock } from "@/components/input-block";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { RecipientInput } from "@/components/recipient-input";
-import { ReviewStep, StepperHeader, StepperNextButton, StepProps, StepWizard } from "@/components/step-wizard";
+import { ReviewStep, StepperHeader, InlineNextButton, StepProps, StepWizard } from "@/components/step-wizard";
 import { TokenInput, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
 import { Textarea } from "@/components/textarea";
@@ -18,7 +18,7 @@ import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Big from "big.js";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
@@ -72,10 +72,18 @@ const vestingFormSchema = z.object({
 
 type VestingFormValues = z.infer<typeof vestingFormSchema>;
 
-function Step1() {
+function Step1({ handleNext }: StepProps) {
   const form = useFormContext<VestingFormValues>();
   const startDate = form.watch("vesting.startDate");
   const endDate = form.watch("vesting.endDate");
+
+  const handleContinue = () => {
+    form.trigger(["vesting.address", "vesting.startDate", "vesting.endDate", "vesting.amount"]).then((isValid) => {
+      if (isValid && handleNext) {
+        handleNext();
+      }
+    });
+  };
 
   return (
     <PageCard>
@@ -89,14 +97,25 @@ function Step1() {
         <DateInput control={form.control} name="vesting.startDate" title="Start Date" maxDate={endDate} />
         <DateInput control={form.control} name="vesting.endDate" title="End Date" minDate={startDate} />
       </div>
+
+      <InlineNextButton text="Continue" onClick={handleContinue} />
     </PageCard>)
 }
 
-function Step2({ handleBack }: StepProps) {
+function Step2({ handleBack, handleNext }: StepProps) {
   const form = useFormContext<VestingFormValues>();
   const allowCancel = form.watch("vesting.allowCancel");
   const startDate = form.watch("vesting.startDate");
   const endDate = form.watch("vesting.endDate");
+
+  const handleReview = () => {
+    form.trigger().then((isValid) => {
+      if (isValid && handleNext) {
+        handleNext();
+      }
+    });
+  };
+
   return (
     <PageCard>
       <StepperHeader title="Advanced Settings" handleBack={handleBack} />
@@ -127,6 +146,8 @@ function Step2({ handleBack }: StepProps) {
           />
         </InputBlock>
       )} />
+
+      <InlineNextButton text="Review Request" onClick={handleReview} />
     </PageCard>
   )
 }
@@ -187,6 +208,8 @@ function Step3({ handleBack }: StepProps) {
           <InfoDisplay items={infoItems} />
         </div>
       </ReviewStep>
+
+      <InlineNextButton text="Confirm and Submit Request" loading={form.formState.isSubmitting} />
     </PageCard>
   )
 }
@@ -195,7 +218,6 @@ export default function VestingPage() {
   const { selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<VestingFormValues>({
     resolver: zodResolver(vestingFormSchema),
@@ -216,7 +238,6 @@ export default function VestingPage() {
   });
 
   const onSubmit = async (data: VestingFormValues) => {
-    setIsSubmitting(true);
     try {
       const description = {
         title: `Create vesting schedule for ${data.vesting.address}`,
@@ -279,8 +300,6 @@ export default function VestingPage() {
       form.reset(form.getValues());
     } catch (error) {
       console.error("Vesting error", error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -292,27 +311,12 @@ export default function VestingPage() {
             stepTitles={["Details", "Settings", "Review"]}
             steps={[
               {
-                nextButton: ({ handleNext }) => StepperNextButton({ text: "Continue" })(() => {
-                  form.trigger(["vesting.address", "vesting.startDate", "vesting.endDate", "vesting.amount"]).then((isValid) => {
-                    if (isValid) {
-                      return handleNext();
-                    }
-                  });
-                }),
                 component: Step1,
               },
               {
-                nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Request" })(() => {
-                  form.trigger().then((isValid) => {
-                    if (isValid) {
-                      return handleNext();
-                    }
-                  });
-                }),
                 component: Step2,
               },
               {
-                nextButton: ({ }) => StepperNextButton({ text: "Confirm and Submit Request", loading: isSubmitting })(),
                 component: Step3,
               }
             ]}

@@ -12,11 +12,12 @@ import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
 export interface StepProps {
     handleBack?: () => void;
+    handleNext?: () => void;
 }
 
 interface Step {
-    nextButton: React.ComponentType<{ handleNext: () => void }>;
-    component: React.ComponentType<{ handleBack?: () => void }>;
+    nextButton?: React.ComponentType<{ handleNext: () => void }>;
+    component: React.ComponentType<{ handleBack?: () => void; handleNext?: () => void }>;
 }
 
 interface StepIndicatorProps {
@@ -39,7 +40,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                             "pb-2 relative border-none bg-transparent shadow-none",
                             "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0",
                             "after:transition-all after:duration-300 after:ease-in-out",
-                            index === currentStep
+                            index <= currentStep
                                 ? 'text-foreground after:bg-primary after:h-[3px]'
                                 : 'text-muted-foreground after:bg-border after:h-[2px]'
 
@@ -112,8 +113,8 @@ export function StepWizard({
                     }}
                     className="flex flex-col gap-4"
                 >
-                    <CurrentStep.component handleBack={index > 0 ? handleBack : undefined} />
-                    <CurrentStep.nextButton handleNext={handleNext} />
+                    <CurrentStep.component handleBack={index > 0 ? handleBack : undefined} handleNext={handleNext} />
+                    {CurrentStep.nextButton && <CurrentStep.nextButton handleNext={handleNext} />}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -122,16 +123,20 @@ export function StepWizard({
 
 interface HandleBackWithTitleProps {
     title: string;
+    description?: string;
     handleBack?: () => void;
 }
 
-export function StepperHeader({ title, handleBack }: HandleBackWithTitleProps) {
+export function StepperHeader({ title, description, handleBack }: HandleBackWithTitleProps) {
     return (
         <div className="flex items-center gap-2">
             {
                 handleBack && <Button variant={'ghost'} size={'icon'} type="button" onClick={handleBack}>{<ArrowLeftIcon className="size-4" />}</Button>
             }
-            <p className="text-lg font-semibold">{title}</p>
+            <div className="flex flex-col gap-0">
+                <p className="font-semibold">{title}</p>
+                {description && <p className="text-sm text-muted-foreground">{description}</p>}
+            </div>
         </div>
     );
 }
@@ -148,11 +153,46 @@ export const StepperNextButton = ({ text, loading = false }: { text: string; loa
     }
 };
 
+interface InlineNextButtonProps {
+    handleNext?: () => void;
+    text: string;
+    loading?: boolean;
+    onClick?: () => void;
+}
+
+export function InlineNextButton({ handleNext, text, loading = false, onClick }: InlineNextButtonProps) {
+    const handleClick = () => {
+        if (onClick) {
+            onClick();
+        } else if (handleNext) {
+            handleNext();
+        }
+    };
+
+    const { type, onClickHandler } = handleNext || onClick
+        ? { type: "button" as const, onClickHandler: handleClick }
+        : { type: "submit" as const, onClickHandler: undefined };
+
+    return (
+        <div className="rounded-lg border bg-card p-0 overflow-hidden">
+            <Button
+                className="w-full h-10 rounded-none"
+                type={type}
+                onClick={onClickHandler}
+                disabled={loading}
+            >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {text}
+            </Button>
+        </div>
+    );
+}
+
 interface ReviewStepProps<TFieldValues extends FieldValues = FieldValues> {
     control: Control<TFieldValues>;
     reviewingTitle: string;
     children: React.ReactNode;
-    approveWithMyVoteName: Path<TFieldValues>;
+    approveWithMyVoteName?: Path<TFieldValues>;
     proposalKind: ProposalPermissionKind;
     handleBack?: () => void;
 }
@@ -162,13 +202,13 @@ export function ReviewStep<TFieldValues extends FieldValues = FieldValues>({ con
     const { accountId } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
 
-    const { approverAccounts } = policy ? getApproversAndThreshold(policy, accountId ?? "", proposalKind, false) : { approverAccounts: [] as string[] };
+    const { approverAccounts } = approveWithMyVoteName && policy ? getApproversAndThreshold(policy, accountId ?? "", proposalKind, false) : { approverAccounts: [] as string[] };
 
     return (
         <div className="flex flex-col gap-4">
             <StepperHeader title={reviewingTitle} handleBack={handleBack} />
             {children}
-            {approverAccounts.includes(accountId ?? "") && (
+            {approveWithMyVoteName && approverAccounts.includes(accountId ?? "") && (
                 <FormField control={control} name={approveWithMyVoteName} render={({ field }) => (
                     <div className="flex items-center gap-4">
                         <Switch id="approveWithMyVote" checked={field.value} onCheckedChange={field.onChange} />

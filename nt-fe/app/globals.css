@@ -23,6 +23,10 @@
   --border: rgb(245, 245, 245);
   --input: rgb(229, 229, 229);
   --ring: rgb(161, 161, 161);
+  --general-success-foreground: rgb(21, 128, 61);
+  --general-info-background-faded: rgb(239, 246, 255);
+  --general-info-border: rgb(191, 219, 254);
+  --general-info-foreground: rgb(29, 78, 216);
   --chart-1: rgb(164, 246, 204);
   --chart-2: rgb(106, 235, 178);
   --chart-3: rgb(10, 191, 122);
@@ -131,6 +135,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-general-success-foreground: var(--general-success-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -144,6 +149,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-general-info-background-faded: var(--general-info-background-faded);
+  --color-general-info-border: var(--general-info-border);
+  --color-general-info-foreground: var(--general-info-foreground);
 
   --font-sans: var(--font-geist-sans), var(--font-sans);
   --font-mono: var(--font-geist-mono), var(--font-mono);

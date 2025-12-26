@@ -30,8 +30,8 @@ export function PageComponentLayout({ title, description, backButton, children }
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between bg-card px-6 border-b border-border">
-        <div className="flex items-center gap-4">
+      <header className="flex items-center min-h-14 justify-between bg-card px-2 md:px-6 border-b border-border">
+        <div className="flex items-center gap-2 md:gap-4">
           <Button
             variant="ghost"
             size="icon"
@@ -41,11 +41,12 @@ export function PageComponentLayout({ title, description, backButton, children }
           >
             <Menu className="h-6 w-6" />
           </Button>
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             {backButton && (
               <Button
                 variant="ghost"
                 size="icon"
+                className="hidden lg:block"
                 onClick={() => {
                   if (typeof backButton === 'string') {
                     // If there's history, go back; otherwise, navigate to the provided fallback URL
@@ -59,13 +60,15 @@ export function PageComponentLayout({ title, description, backButton, children }
                   }
                 }}
               >
-                <ArrowLeft className="h-5 w-5 stroke-3 hidden lg:block" />
+                <ArrowLeft className="h-5 w-5 stroke-3" />
               </Button>
             )}
-            <h1 className="text-lg font-bold">{title}</h1>
-            {description && (
-              <span className="hidden md:inline text-xs text-muted-foreground">{description}</span>
-            )}
+            <div className="flex items-baseline gap-2">
+              <h1 className="text-base md:text-lg font-bold">{title}</h1>
+              {description && (
+                <span className="hidden md:inline text-xs text-muted-foreground">{description}</span>
+              )}
+            </div>
           </div>
         </div>
 

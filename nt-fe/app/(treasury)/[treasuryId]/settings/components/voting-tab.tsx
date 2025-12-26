@@ -3,8 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/button";
-import { Slider } from "@/components/ui/slider";
-import { Info, AlertTriangle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PageCard } from "@/components/card";
 import { useTreasury } from "@/stores/treasury-store";
@@ -32,6 +31,7 @@ import { User } from "@/components/user";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { encodeToMarkdown } from "@/lib/utils";
+import { ThresholdSlider } from "@/components/threshold";
 
 const votingFormSchema = z.object({
   voteDuration: z
@@ -382,71 +382,21 @@ export function VotingTab() {
                         thresholds?.[role.name] ?? role.threshold;
 
                       return (
-                        <div className="space-y-2">
-                          <div className="space-y-2 bg-muted rounded-lg p-4">
-                            <div className="flex items-center justify-between text-sm mb-2">
-                              {Array.from(
-                                { length: role.memberCount },
-                                (_, i) => i + 1
-                              ).map((num) => (
-                                <span
-                                  key={num}
-                                  className={
-                                    num === currentThreshold
-                                      ? "font-semibold text-foreground"
-                                      : "text-muted-foreground"
-                                  }
-                                >
-                                  {num}
-                                </span>
-                              ))}
-                            </div>
-
-                            <Slider
-                              value={[currentThreshold]}
-                              onValueChange={(value) => {
-                                form.setValue(
-                                  "thresholds",
-                                  {
-                                    ...thresholds,
-                                    [role.name]: value[0],
-                                  },
-                                  { shouldDirty: true }
-                                );
-                              }}
-                              min={1}
-                              max={role.memberCount}
-                              step={1}
-                              className="w-full **:data-[slot=slider-track]:bg-gray-300 dark:**:data-[slot=slider-track]:bg-gray-700 **:data-[slot=slider-track]:h-2 **:data-[slot=slider-range]:bg-black dark:**:data-[slot=slider-range]:bg-white"
-                              disabled={!isAuthorized}
-                            />
-                          </div>
-
-                          {/* Warning banner - show when threshold is 1 */}
-                          {currentThreshold === 1 && (
-                            <div className="mt-3 flex items-start gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 p-3 border border-yellow-200 dark:border-yellow-900">
-                              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
-                              <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                                A 1-of-{role.memberCount} threshold means any
-                                single member can execute transactions. This
-                                reduces security.
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Info banner - only show if threshold is between 1 and less than total */}
-                          {currentThreshold > 1 &&
-                            currentThreshold < role.memberCount && (
-                              <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 border border-blue-200 dark:border-blue-900">
-                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                                <p className="text-sm text-blue-600 dark:text-blue-400">
-                                  A {currentThreshold}-of-{role.memberCount}{" "}
-                                  threshold provides a good balance between
-                                  security and operational flexibility.
-                                </p>
-                              </div>
-                            )}
-                        </div>
+                        <ThresholdSlider
+                          currentThreshold={currentThreshold}
+                          memberCount={role.memberCount}
+                          onValueChange={(value) => {
+                            form.setValue(
+                              "thresholds",
+                              {
+                                ...thresholds,
+                                [role.name]: value,
+                              },
+                              { shouldDirty: true }
+                            );
+                          }}
+                          disabled={!isAuthorized}
+                        />
                       );
                     })()}
                   </div>
