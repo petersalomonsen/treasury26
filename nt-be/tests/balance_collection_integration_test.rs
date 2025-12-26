@@ -1,4 +1,4 @@
-use nf_be::handlers::balance_changes::gap_detector::find_gaps;
+use nt_be::handlers::balance_changes::gap_detector::find_gaps;
 use sqlx::{PgPool, types::BigDecimal};
 use std::{str::FromStr, fs};
 use serde_json::Value;
@@ -40,7 +40,7 @@ async fn load_test_data(pool: &PgPool) -> sqlx::Result<(String, usize)> {
             .unwrap_or("unknown");
 
         let actions = serde_json::to_value(&tx["transactions"]).unwrap();
-        let receipt = if let Some(t) = transfers.first() {
+        let raw_data = if let Some(t) = transfers.first() {
             serde_json::json!({"receipt_id": t["receiptId"].as_str().unwrap_or("unknown")})
         } else {
             serde_json::json!({})
@@ -49,7 +49,7 @@ async fn load_test_data(pool: &PgPool) -> sqlx::Result<(String, usize)> {
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, receipt)
+            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             account_id,
@@ -61,7 +61,7 @@ async fn load_test_data(pool: &PgPool) -> sqlx::Result<(String, usize)> {
             near_after,
             Some(counterparty),
             actions,
-            receipt
+            raw_data
         )
         .execute(pool)
         .await?;
@@ -120,7 +120,7 @@ async fn load_intents_token_test_data(pool: &PgPool, target_token_id: &str) -> s
             .unwrap_or("unknown");
 
         let actions = serde_json::to_value(&tx["transactions"]).unwrap();
-        let receipt = if let Some(t) = transfers.iter().find(|t| t["tokenId"].as_str() == Some(target_token_id)) {
+        let raw_data = if let Some(t) = transfers.iter().find(|t| t["tokenId"].as_str() == Some(target_token_id)) {
             serde_json::json!({"receipt_id": t["receiptId"].as_str().unwrap_or("unknown")})
         } else {
             serde_json::json!({})
@@ -132,7 +132,7 @@ async fn load_intents_token_test_data(pool: &PgPool, target_token_id: &str) -> s
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, receipt)
+            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             account_id,
@@ -144,7 +144,7 @@ async fn load_intents_token_test_data(pool: &PgPool, target_token_id: &str) -> s
             after,
             Some(counterparty),
             actions,
-            receipt
+            raw_data
         )
         .execute(pool)
         .await?;

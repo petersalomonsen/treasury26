@@ -87,7 +87,7 @@ mod tests {
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, receipt)
+            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             "test.near",
@@ -108,7 +108,7 @@ mod tests {
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, receipt)
+            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             "test.near",
@@ -142,7 +142,7 @@ mod tests {
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, receipt)
+            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             "test.near",
@@ -163,7 +163,7 @@ mod tests {
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, receipt)
+            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             "test.near",
@@ -204,7 +204,7 @@ mod tests {
             sqlx::query!(
                 r#"
                 INSERT INTO balance_changes 
-                (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, receipt)
+                (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 "#,
                 "test.near",
