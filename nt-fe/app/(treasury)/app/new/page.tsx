@@ -1,24 +1,23 @@
 "use client";
 
 import { PageCard } from "@/components/card";
-import { InfoDisplay } from "@/components/info-display";
 import { InputBlock } from "@/components/input-block";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { ReviewStep, StepperHeader, StepProps, StepWizard, InlineNextButton } from "@/components/step-wizard";
+import { StepperHeader, StepProps, StepWizard, InlineNextButton } from "@/components/step-wizard";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { LargeInput } from "@/components/large-input";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, } from "react";
-import { ArrayPath, Path, useForm, useFormContext } from "react-hook-form";
+import { useEffect, } from "react";
+import { ArrayPath, useForm, useFormContext } from "react-hook-form";
 import z from "zod";
-import { User } from "@/components/user";
-import { checkHandleUnused } from "@/lib/api";
-import { Member, MemberInput, MembersArray, memberSchema } from "@/components/member-input";
+import { checkHandleUnused, createTreasury, CreateTreasuryRequest } from "@/lib/api";
+import { Member, MemberInput, memberSchema } from "@/components/member-input";
 import { useNear } from "@/stores/near-store";
 import { ThresholdSlider } from "@/components/threshold";
 import { CircleCheck, Database, Info, UsersRound, Vote } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const treasuryFormSchema = z.object({
     details: z.object({
@@ -116,10 +115,6 @@ function Step2({ handleBack, handleNext }: StepProps) {
 
     const handleReview = async () => {
         const isValid = await form.trigger(["members"]);
-        console.log(form.formState.errors);
-        console.log(isValid);
-        console.log(form.getValues());
-        console.log(handleNext);
         if (isValid && handleNext) {
             handleNext();
         }
@@ -253,13 +248,35 @@ export default function NewTreasuryPage() {
 
     const onSubmit = async (data: TreasuryFormValues) => {
         try {
-            console.log("Creating treasury with data:", data);
-            // TODO: Implement treasury creation logic
-            // This will involve calling the NEAR contract to create a new DAO
+            // Extract unique account IDs for each role
+            const governors = data.members
+                .filter(m => m.roles.includes("governance"))
+                .map(m => m.accountId);
+            const financiers = data.members
+                .filter(m => m.roles.includes("financial"))
+                .map(m => m.accountId);
+            const requestors = data.members
+                .filter(m => m.roles.includes("requestor"))
+                .map(m => m.accountId);
 
-            form.reset(form.getValues());
+            const request: CreateTreasuryRequest = {
+                name: data.details.treasuryName,
+                accountId: `${data.details.accountName}.sputnik-dao.near`,
+                paymentThreshold: data.details.paymentThreshold,
+                governors,
+                financiers,
+                requestors,
+            };
+
+            const response = await createTreasury(request).then((response) => {
+                router.push(`/app/${response.treasury}`);
+            }).catch((error) => {
+                console.error("Treasury creation error", error);
+                toast.error("Failed to create treasury");
+            });
         } catch (error) {
             console.error("Treasury creation error", error);
+            toast.error("Failed to create treasury");
         }
     };
 

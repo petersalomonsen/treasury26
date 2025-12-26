@@ -90,6 +90,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/treasury/check-handle-unused",
             get(handlers::treasury::check_handle_unused::check_handle_unused)
         )
+        .route(
+            "/api/treasury/create",
+            post(handlers::treasury::create::create_treasury)
+        )
         // User endpoints
         .route(
             "/api/user/balance",

@@ -19,7 +19,6 @@ export function ThresholdSlider({
 }: ThresholdSliderProps) {
     let array = memberCount === 1 ? [0, 1] : Array.from({ length: memberCount }, (_, i) => i + 1);
 
-    console.log(currentThreshold, memberCount);
     return (
         <div className="space-y-2">
             <InputBlock invalid={false}>

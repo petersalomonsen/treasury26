@@ -4,13 +4,15 @@ pub mod routes;
 pub mod utils;
 
 use moka::future::Cache;
-use near_api::{NetworkConfig, RPCEndpoint};
+use near_api::{AccountId, NetworkConfig, RPCEndpoint, Signer};
 use sqlx::PgPool;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 pub struct AppState {
     pub http_client: reqwest::Client,
     pub cache: Cache<String, serde_json::Value>,
+    pub signer: Arc<Signer>,
+    pub signer_id: AccountId,
     pub network: NetworkConfig,
     pub archival_network: NetworkConfig,
     pub env_vars: utils::env::EnvVars,
@@ -44,6 +46,9 @@ pub async fn init_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
     Ok(AppState {
         http_client: reqwest::Client::new(),
         cache,
+        signer: Signer::from_secret_key(env_vars.signer_key.clone())
+            .expect("Failed to create signer."),
+        signer_id: env_vars.signer_id.clone(),
         network: NetworkConfig {
             rpc_endpoints: vec![
                 RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())

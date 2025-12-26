@@ -642,3 +642,36 @@ export async function checkAccountExists(
     return null;
   }
 }
+
+export interface CreateTreasuryRequest {
+  name: string;
+  accountId: string;
+  paymentThreshold: number;
+  governors: string[];
+  financiers: string[];
+  requestors: string[];
+}
+
+export interface CreateTreasuryResponse {
+  treasury: string;
+}
+
+/**
+ * Create a new treasury
+ * Sends a request to the backend to deploy a new treasury contract
+ * Returns the created treasury account ID
+ */
+export async function createTreasury(
+  request: CreateTreasuryRequest
+): Promise<CreateTreasuryResponse> {
+  try {
+    const url = `${BACKEND_API_BASE}/treasury/create`;
+
+    const response = await axios.post<CreateTreasuryResponse>(url, request);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error creating treasury", error);
+    throw error;
+  }
+}
