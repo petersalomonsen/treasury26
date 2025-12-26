@@ -11,7 +11,7 @@ dev:
 
 # Run backend only
 dev-backend:
-    cd nt-be && cargo watch -x run --bin nt-be
+    cd nt-be && cargo watch -x "run --bin nt-be"
 
 # Run frontend only
 dev-frontend:
