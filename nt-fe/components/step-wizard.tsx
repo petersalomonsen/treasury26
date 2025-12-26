@@ -1,4 +1,4 @@
-import { useState, } from "react";
+import { useState, useRef } from "react";
 import { Control, FieldValues, Path, } from "react-hook-form";
 import { Button } from "./button";
 import { ArrowLeftIcon, Loader2 } from "lucide-react";
@@ -65,18 +65,23 @@ export function StepWizard({
 }: StepWizardProps) {
     const [index, setIndex] = useState(0);
     const [direction, setDirection] = useState<1 | -1>(1);
+    const isTransitioningRef = useRef(false);
 
     const CurrentStep = steps[index];
 
     // Handle next step (validate current step)
     const handleNext = async () => {
+        if (isTransitioningRef.current || index >= steps.length - 1) return;
+        isTransitioningRef.current = true;
         setDirection(1);
-        setIndex((i) => i + 1);
+        setIndex((i) => Math.min(i + 1, steps.length - 1));
     };
 
     const handleBack = () => {
+        if (isTransitioningRef.current || index <= 0) return;
+        isTransitioningRef.current = true;
         setDirection(-1);
-        setIndex((i) => i - 1);
+        setIndex((i) => Math.max(i - 1, 0));
     };
 
     const variants = {
@@ -111,6 +116,7 @@ export function StepWizard({
                         x: { type: "tween", duration: 0.25, ease: "easeInOut" },
                         opacity: { duration: 0.20 },
                     }}
+                    onAnimationComplete={() => { isTransitioningRef.current = false; }}
                     className="flex flex-col gap-4"
                 >
                     <CurrentStep.component handleBack={index > 0 ? handleBack : undefined} handleNext={handleNext} />
