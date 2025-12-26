@@ -1,0 +1,173 @@
+use std::sync::Arc;
+
+use axum::{Json, extract::State};
+use base64::{Engine, prelude::BASE64_STANDARD};
+use near_api::{AccountId, Contract, NearToken};
+use reqwest::StatusCode;
+use serde::{Deserialize, Serialize};
+
+use crate::{AppState, constants::TREASURY_FACTORY_CONTRACT_ID};
+
+#[derive(Deserialize)]
+pub struct CreateTreasuryRequest {
+    pub name: String,
+    #[serde(rename = "accountId")]
+    pub account_id: AccountId,
+    #[serde(rename = "paymentThreshold")]
+    pub payment_threshold: u8,
+    pub governors: Vec<AccountId>,
+    pub financiers: Vec<AccountId>,
+    pub requestors: Vec<AccountId>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CreateTreasuryResponse {
+    pub treasury: AccountId,
+}
+
+fn prepare_args(payload: CreateTreasuryRequest) -> Result<serde_json::Value, serde_json::Error> {
+    let one_required_vote = serde_json::json!({
+      "weight_kind": "RoleWeight",
+      "quorum": "0",
+      "threshold": "1",
+    });
+
+    let payment_threshold = serde_json::json!({
+      "weight_kind": "RoleWeight",
+      "quorum": "0",
+      "threshold": payload.payment_threshold.to_string(),
+    });
+
+    let config = serde_json::json!({
+      "config": {
+        "name": payload.name,
+        "purpose": "managing digital assets",
+        "metadata": "",
+      },
+      "policy": {
+        "roles": [
+          {
+            "kind": {
+              "Group": payload.requestors,
+            },
+            "name": "Requestor",
+            "permissions": [
+              "call:AddProposal",
+              "transfer:AddProposal",
+              "call:VoteRemove",
+              "transfer:VoteRemove"
+            ],
+            "vote_policy": {
+              "transfer": one_required_vote.clone(),
+              "call": one_required_vote.clone()
+            }
+          },
+          {
+            "kind": {
+              "Group": payload.governors,
+            },
+            "name": "Admin",
+            "permissions": [
+              "config:*",
+              "policy:*",
+              "add_member_to_role:*",
+              "remove_member_from_role:*",
+              "upgrade_self:*",
+              "upgrade_remote:*",
+              "set_vote_token:*",
+              "add_bounty:*",
+              "bounty_done:*",
+              "factory_info_update:*",
+              "policy_add_or_update_role:*",
+              "policy_remove_role:*",
+              "policy_update_default_vote_policy:*",
+              "policy_update_parameters:*",
+            ],
+            "vote_policy": {
+              "config": one_required_vote.clone(),
+              "policy": one_required_vote.clone(),
+              "add_member_to_role": one_required_vote.clone(),
+              "remove_member_from_role": one_required_vote.clone(),
+              "upgrade_self": one_required_vote.clone(),
+              "upgrade_remote": one_required_vote.clone(),
+              "set_vote_token": one_required_vote.clone(),
+              "add_bounty": one_required_vote.clone(),
+              "bounty_done": one_required_vote.clone(),
+              "factory_info_update": one_required_vote.clone(),
+              "policy_add_or_update_role": one_required_vote.clone(),
+              "policy_remove_role": one_required_vote.clone(),
+              "policy_update_default_vote_policy": one_required_vote.clone(),
+              "policy_update_parameters": one_required_vote.clone(),
+            },
+          },
+          {
+            "kind": {
+              "Group": payload.financiers,
+            },
+            "name": "Approver",
+            "permissions": [
+              "call:VoteReject",
+              "call:VoteApprove",
+              "call:RemoveProposal",
+              "call:Finalize",
+              "transfer:VoteReject",
+              "transfer:VoteApprove",
+              "transfer:RemoveProposal",
+              "transfer:Finalize",
+            ],
+            "vote_policy": {
+              "transfer": payment_threshold.clone(),
+              "call": payment_threshold.clone(),
+            },
+          },
+        ],
+        "default_vote_policy": {
+          "weight_kind": "RoleWeight",
+          "quorum": "0",
+          "threshold": [1, 2],
+        },
+        "proposal_bond": NearToken::from_millinear(100),
+        "proposal_period": "604800000000000",
+        "bounty_bond": NearToken::from_millinear(100),
+        "bounty_forgiveness_period": "604800000000000",
+      },
+    });
+
+    let bytes = BASE64_STANDARD.encode(serde_json::to_vec(&config)?);
+
+    Ok(serde_json::json!({
+      "name": payload.account_id.to_string(),
+      "args": bytes,
+    }))
+}
+
+pub async fn create_treasury(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CreateTreasuryRequest>,
+) -> Result<Json<CreateTreasuryResponse>, (StatusCode, String)> {
+    let treasury = payload.account_id.clone();
+    let args = prepare_args(payload).map_err(|e| {
+        eprintln!("Error preparing args: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+
+    Contract(TREASURY_FACTORY_CONTRACT_ID.into())
+        .call_function("create", args)
+        .transaction()
+        .max_gas()
+        .deposit(NearToken::from_near(6))
+        .with_signer(state.signer_id.clone(), state.signer.clone())
+        .send_to(&state.network)
+        .await
+        .map_err(|e| {
+            eprintln!("Error creating treasury: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?
+        .into_result()
+        .map_err(|e| {
+            eprintln!("Error creating treasury: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
+
+    Ok(Json(CreateTreasuryResponse { treasury }))
+}

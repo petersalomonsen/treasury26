@@ -2,6 +2,7 @@ import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import { Info } from "lucide-react";
+import { Pill } from "@/components/pill";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNear } from "@/stores/near-store";
 
@@ -20,9 +21,7 @@ export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approv
 
     if (variant === "pupil") {
         return (
-            <div className="flex border rounded-md py-[3px] px-2 w-fit text-xs font-medium text-center">
-                Threshold {requiredVotes} out of {approverAccounts?.length ?? 0}
-            </div>
+            <Pill title={`Threshold ${requiredVotes} out of ${approverAccounts?.length ?? 0}`} />
         );
     }
 

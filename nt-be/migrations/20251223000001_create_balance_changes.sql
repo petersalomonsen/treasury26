@@ -23,7 +23,7 @@ CREATE TABLE balance_changes (
     
     -- Raw data for debugging
     actions JSONB,
-    receipt JSONB,
+    raw_data JSONB,
     
     -- Timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -129,12 +129,11 @@ export function ProposalSidebar({ proposal, policy }: ProposalSidebarProps) {
   const handleVote = async (vote: "Approve" | "Reject") => {
     if (!canVote) return;
     try {
-      const result = await voteProposals(selectedTreasury ?? "", [{
+      await voteProposals(selectedTreasury ?? "", [{
         proposalId: proposal.id,
         vote: vote,
         proposalKind,
       }]);
-      console.log(result);
     } catch (error) {
       console.error(`Failed to ${vote.toLowerCase()} proposal:`, error);
     }

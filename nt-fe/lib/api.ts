@@ -588,3 +588,90 @@ export async function getBatchPayment(
     return null;
   }
 }
+
+export interface CheckHandleUnusedResponse {
+  unused: boolean;
+}
+
+/**
+ * Check if a treasury handle (account name) is available
+ * Validates that the account doesn't already exist on the blockchain
+ */
+export async function checkHandleUnused(
+  treasuryId: string
+): Promise<CheckHandleUnusedResponse | null> {
+  if (!treasuryId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/treasury/check-handle-unused`;
+
+    const response = await axios.get<CheckHandleUnusedResponse>(url, {
+      params: { treasuryId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error checking if handle is unused for ${treasuryId}`, error);
+    return null;
+  }
+}
+
+export interface CheckAccountExistsResponse {
+  exists: boolean;
+}
+
+/**
+ * Check if any account ID exists on NEAR blockchain
+ * Works with any account ID, not limited to sputnik-dao accounts
+ */
+export async function checkAccountExists(
+  accountId: string
+): Promise<CheckAccountExistsResponse | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/user/check-account-exists`;
+
+    const response = await axios.get<CheckAccountExistsResponse>(url, {
+      params: { accountId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error checking if account exists for ${accountId}`, error);
+    return null;
+  }
+}
+
+export interface CreateTreasuryRequest {
+  name: string;
+  accountId: string;
+  paymentThreshold: number;
+  governors: string[];
+  financiers: string[];
+  requestors: string[];
+}
+
+export interface CreateTreasuryResponse {
+  treasury: string;
+}
+
+/**
+ * Create a new treasury
+ * Sends a request to the backend to deploy a new treasury contract
+ * Returns the created treasury account ID
+ */
+export async function createTreasury(
+  request: CreateTreasuryRequest
+): Promise<CreateTreasuryResponse> {
+  try {
+    const url = `${BACKEND_API_BASE}/treasury/create`;
+
+    const response = await axios.post<CreateTreasuryResponse>(url, request);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error creating treasury", error);
+    throw error;
+  }
+}

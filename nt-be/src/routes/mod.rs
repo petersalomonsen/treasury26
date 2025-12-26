@@ -86,6 +86,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/treasury/config",
             get(handlers::treasury::config::get_treasury_config)
         )
+        .route(
+            "/api/treasury/check-handle-unused",
+            get(handlers::treasury::check_handle_unused::check_handle_unused)
+        )
+        .route(
+            "/api/treasury/create",
+            post(handlers::treasury::create::create_treasury)
+        )
         // User endpoints
         .route(
             "/api/user/balance",
@@ -114,6 +122,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/user/profile/batch",
             get(handlers::user::profile::get_batch_profiles),
+        )
+        .route(
+            "/api/user/check-account-exists",
+            get(handlers::user::check_account_exists::check_account_exists),
         )
         // Proposals endpoints
         .route(

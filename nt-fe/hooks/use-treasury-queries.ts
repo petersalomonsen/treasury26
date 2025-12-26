@@ -16,7 +16,9 @@ import {
   getProfile,
   getBatchProfiles,
   StorageDepositRequest,
-  getBatchPayment
+  getBatchPayment,
+  checkHandleUnused,
+  checkAccountExists
 } from "@/lib/api";
 
 /**
@@ -276,5 +278,35 @@ export function useBatchPayment(batchId: string | null | undefined) {
     queryFn: () => getBatchPayment(batchId!),
     enabled: !!batchId,
     staleTime: 1000 * 60 * 5, // 5 minutes (batch payment data doesn't change frequently once created)
+  });
+}
+
+/**
+ * Query hook to check if a treasury handle (account name) is available
+ * Validates that the account doesn't already exist on the blockchain
+ * Returns is_valid: true if the handle is available, false if already taken
+ */
+export function useCheckHandleUnused(treasuryId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["checkHandleUnused", treasuryId],
+    queryFn: () => checkHandleUnused(treasuryId!),
+    enabled: !!treasuryId && treasuryId.length > 0,
+    staleTime: 1000 * 60, // 1 minute (handle availability can change)
+    retry: false, // Don't retry on failure
+  });
+}
+
+/**
+ * Query hook to check if any account ID exists on NEAR blockchain
+ * Works with any account ID, not limited to sputnik-dao accounts
+ * Returns exists: true if the account exists, false otherwise
+ */
+export function useCheckAccountExists(accountId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["checkAccountExists", accountId],
+    queryFn: () => checkAccountExists(accountId!),
+    enabled: !!accountId && accountId.length > 0,
+    staleTime: 1000 * 60, // 1 minute (account existence can change)
+    retry: false, // Don't retry on failure
   });
 }

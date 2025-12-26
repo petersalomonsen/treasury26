@@ -11,9 +11,14 @@ impl TestServer {
     pub async fn start() -> Self {
         // Start the server in the background
         let process = Command::new("cargo")
-            .args(&["run", "--bin", "nf-be"])
+            .args(&["run", "--bin", "nt-be"])
             .env("PORT", "3001")
             .env("RUST_LOG", "info")
+            .env(
+                "SIGNER_KEY",
+                "ed25519:3tgdk2wPraJzT4nsTuf86UX41xgPNk3MHnq8epARMdBNs29AFEztAuaQ7iHddDfXG9F2RzV1XNQYgJyAyoW51UBB",
+            )
+            .env("SIGNER_ID", "sandbox")
             .spawn()
             .expect("Failed to start server");
 

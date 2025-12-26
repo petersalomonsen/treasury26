@@ -1,3 +1,5 @@
+use near_api::{AccountId, SecretKey};
+
 #[derive(Clone, Debug)]
 pub struct EnvVars {
     pub database_url: String,
@@ -5,6 +7,8 @@ pub struct EnvVars {
     pub fastnear_api_key: String,
     pub sputnik_dao_api_base: String,
     pub bridge_rpc_url: String,
+    pub signer_key: SecretKey,
+    pub signer_id: AccountId,
 }
 
 impl Default for EnvVars {
@@ -18,6 +22,14 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "https://sputnik-indexer.fly.dev".to_string()),
             bridge_rpc_url: std::env::var("BRIDGE_RPC_URL")
                 .unwrap_or_else(|_| "https://bridge.chaindefuser.com/rpc".to_string()),
+            signer_key: std::env::var("SIGNER_KEY")
+                .expect("SIGNER_KEY is not set")
+                .parse()
+                .unwrap(),
+            signer_id: std::env::var("SIGNER_ID")
+                .expect("SIGNER_ID is not set")
+                .parse()
+                .unwrap(),
         }
     }
 }

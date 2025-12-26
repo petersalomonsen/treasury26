@@ -33,19 +33,18 @@ export function SignIn() {
     );
   }
 
-  // Format account ID for display (show first and last chars for long names)
-  const displayName =
-    signedAccountId.length > 20
-      ? `${signedAccountId.slice(0, 8)}...${signedAccountId.slice(-8)}`
-      : signedAccountId;
-
   return (
     <div className="relative">
       <div
         className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-muted cursor-pointer"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
       >
-        <User accountId={signedAccountId} withLink={false} size="md" />
+        <div className="hidden md:block">
+          <User accountId={signedAccountId} withLink={false} size="md" />
+        </div>
+        <div className="flex md:hidden">
+          <User accountId={signedAccountId} withLink={false} size="sm" iconOnly />
+        </div>
         <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:inline" />
       </div>
 
