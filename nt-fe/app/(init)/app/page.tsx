@@ -73,12 +73,12 @@ export default function AppRedirect() {
           </div>
 
         </div>
-        <div className="hidden lg:flex w-3/5 h-full py-12 pl-16 flex-col gap-9">
-          <div className="w-full pr-16">
+        <div className="hidden lg:flex w-3/5 h-full pt-12 pb-7 pl-16 flex-col gap-9">
+          <div className="w-full pr-[72px]">
             <GradientTitle />
           </div>
-          <div className="h-full w-fit rounded-4xl backdrop-blur-[104px] overflow-clip max-w-full rounded-r-none">
-            <Image src='/welcome.svg' loading="eager" alt="welcome" width={0} height={0} className="h-[120%] w-auto max-w-none" />
+          <div className="w-full h-fit rounded-[16px] max-w-full overflow-hidden rounded-r-none">
+            <Image src='/welcome.svg' loading="eager" alt="welcome" width={0} height={0} className="h-full rounded-[16px]  w-auto max-w-none" />
           </div>
         </div>
       </div>
