@@ -40,11 +40,15 @@ export function ThresholdSlider({
 
                 <Slider
                     value={[currentThreshold]}
-                    onValueChange={(value) => onValueChange(value[0])}
+                    onValueChange={(value) => {
+                        if (value[0] > 0) {
+                            onValueChange(value[0]);
+                        }
+                    }}
                     min={array[0]}
                     max={array[array.length - 1]}
                     step={1}
-                    className="w-full **:data-[slot=slider-track]:bg-gray-300 dark:**:data-[slot=slider-track]:bg-gray-700 **:data-[slot=slider-track]:h-2 **:data-[slot=slider-range]:bg-black dark:**:data-[slot=slider-range]:bg-white"
+                    className="w-full"
                     disabled={disabled}
                 />
             </InputBlock>

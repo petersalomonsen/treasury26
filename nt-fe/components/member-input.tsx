@@ -1,12 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
 import { Button } from "./button";
-import { useTokenBalance, useTokenPrice } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
-import { cn, formatBalance } from "@/lib/utils";
-import TokenSelect from "./token-select";
-import { LargeInput } from "./large-input";
 import { InputBlock } from "./input-block";
 import { FormField, FormMessage } from "./ui/form";
 import { ArrayPath, Control, FieldValues, Path, PathValue, useFieldArray, useFormContext, useWatch } from "react-hook-form";
@@ -14,12 +8,23 @@ import z from "zod";
 import { AccountIdInput, accountIdSchema } from "./account-id-input";
 import { RoleSelector } from "./role-selector";
 import { Pill } from "./pill";
-import { Plus, Trash, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 export const memberSchema = z.array(z.object({
     accountId: accountIdSchema,
     roles: z.array(z.enum(["governance", "requestor", "financial"])).min(1, "At least one role is required"),
-}));
+})).superRefine((data, ctx) => {
+    const sortedData = data.sort((a, b) => a.accountId.localeCompare(b.accountId));
+    for (const [index, member] of sortedData.entries()) {
+        if (index < sortedData.length - 1 && member.accountId === sortedData[index + 1]?.accountId) {
+            ctx.addIssue({
+                code: "custom",
+                message: "Address already exists",
+                path: [`${index + 1}.accountId`],
+            });
+        }
+    }
+});
 
 export type MembersArray = z.infer<typeof memberSchema>;
 export type Member = z.infer<typeof memberSchema>[number];
@@ -106,7 +111,7 @@ export function MemberInput<
                         </div>
                     </div>
                 ))}
-                <Button variant={"ghost"} className="w-fit pl-0! group hover:text-muted-foreground" onClick={() => append({ accountId: "", roles: ["requestor"] } as TMemberPath extends ArrayPath<TFieldValues>
+                <Button variant={"ghost"} type="button" className="w-fit pl-0! group hover:text-muted-foreground" onClick={() => append({ accountId: "", roles: ["requestor"] } as TMemberPath extends ArrayPath<TFieldValues>
                     ? PathValue<TFieldValues, TMemberPath> extends Member
                     ? PathValue<TFieldValues, TMemberPath>[number]
                     : never

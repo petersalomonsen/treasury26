@@ -7,6 +7,7 @@ import { LargeInput } from "./large-input";
 export const accountIdSchema = z.string().min(2, "Account ID should be at least 2 characters").max(64, "Account ID must be less than 64 characters")
     .regex(/^[a-z0-9.-]+$/, "Account ID can only contain lowercase letters, numbers, hyphens, and underscores")
     .refine(async (accountId) => {
+        if (!accountId || accountId.length < 2) return true;
         const result = await checkAccountExists(accountId);
         return result?.exists === true;
     }, {

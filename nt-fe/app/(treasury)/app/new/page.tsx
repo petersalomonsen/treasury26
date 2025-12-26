@@ -223,7 +223,6 @@ export default function NewTreasuryPage() {
     const { accountId } = useNear();
     const form = useForm<TreasuryFormValues>({
         resolver: zodResolver(treasuryFormSchema),
-        mode: "onBlur",
         defaultValues: {
             details: {
                 paymentThreshold: 1,
