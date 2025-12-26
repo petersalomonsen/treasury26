@@ -5,8 +5,8 @@ services:
     runtime: rust
     plan: starter
     rootDir: nt-be
-    buildCommand: cargo build --release --bin nf-be
-    startCommand: ./target/release/nf-be
+    buildCommand: cargo build --release --bin nt-be
+    startCommand: ./target/release/nt-be
     envVars:
       - key: PIKESPEAK_KEY
         sync: false

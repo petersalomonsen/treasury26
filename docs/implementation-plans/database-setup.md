@@ -246,7 +246,7 @@ Created integration tests:
 - `nt-be/tests/database_test.rs`: Tests health endpoint with real server process
 - `nt-be/tests/balance_changes_test.rs`: Tests balance changes API end-to-end
   - Loads test data from JSON
-  - Spawns actual server using `cargo run --bin nf-be`
+  - Spawns actual server using `cargo run --bin nt-be`
   - Tests queries, filtering, pagination
   - Automatic cleanup via Drop trait
 
@@ -317,7 +317,7 @@ Created comprehensive documentation:
 
 - ✅ NUMERIC(78, 0) chosen over BIGINT because yoctoNEAR amounts (10^24) exceed BIGINT max (~9.2×10^18)
 - ✅ BigDecimal used in Rust for NUMERIC field serialization with serde support
-- ✅ Test binaries require `--bin` flag: `cargo run --bin nf-be` (multiple binaries in project)
-- ✅ Render.yaml updated to use `cargo build --release --bin nf-be`
+- ✅ Test binaries require `--bin` flag: `cargo run --bin nt-be` (multiple binaries in project)
+- ✅ Render.yaml updated to use `cargo build --release --bin nt-be`
 - ✅ Connection pool automatically handles cleanup via Drop trait
 - ✅ sqlx uses prepared statements by default, preventing SQL injection

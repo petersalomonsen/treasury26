@@ -24,12 +24,14 @@ function GradientTitle() {
 
 export default function AppRedirect() {
   const router = useRouter();
-  const { accountId, connect } = useNear();
-  const { data: treasuries = [], isLoading } = useUserTreasuries(accountId);
+  const { accountId, connect, isInitializing } = useNear();
+  const { data: treasuries = [], isLoading, isError } = useUserTreasuries(accountId);
 
   useEffect(() => {
     if (!isLoading && treasuries.length > 0) {
       router.push(`/${treasuries[0].daoId}`);
+    } else if (accountId && treasuries.length === 0 && !isLoading && !isError && !isInitializing) {
+      router.push(`/app/new`);
     }
   }, [treasuries, isLoading, router]);
 
