@@ -244,7 +244,7 @@ export default function NewTreasuryPage() {
         if (!isInitializing && !accountId) {
             router.push("/app/");
         }
-    }, [accountId]);
+    }, [accountId, isInitializing]);
 
     const onSubmit = async (data: TreasuryFormValues) => {
         try {
@@ -268,7 +268,8 @@ export default function NewTreasuryPage() {
                 requestors,
             };
 
-            const response = await createTreasury(request).then((response) => {
+            await createTreasury(request).then((response) => {
+                toast.success("Treasury created successfully");
                 router.push(`/app/${response.treasury}`);
             }).catch((error) => {
                 console.error("Treasury creation error", error);
