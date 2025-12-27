@@ -14,7 +14,7 @@ Integration tests are written early and updated as new functionality is added. T
 
 ---
 
-## Phase 1: Integration Test Infrastructure
+## Phase 1: Integration Test Infrastructure ✅ COMPLETED
 
 **Goal:** Set up integration test framework and first test case.
 
@@ -39,55 +39,32 @@ async fn test_detect_gaps_in_balance_chain(pool: PgPool) -> sqlx::Result<()> {
 
 ---
 
-## Phase 2: Database Schema Update
+## Phase 2: Database Schema ✅ COMPLETED
 
----
+**Goal:** Create balance_changes table with proper schema.
 
-## Phase 2: Database Schema Update
-
-**Goal:** Rename `raw_data` to `receipt` to better reflect its purpose.
-
-**Files to modify:**
+**Files:**
 - `migrations/20251223000001_create_balance_changes.sql`
 
-**TDD approach:**
-1. Update integration test to use `receipt` field
-2. Run migration
-3. Verify test passes
+**Schema includes:**
+- `raw_data JSONB` - for storing raw blockchain data for debugging
+- `actions JSONB` - for storing transaction actions
+- Proper indexes for efficient queries
 
 **Review criteria:**
 - Migration runs successfully
-- Column renamed with no data loss
 - Integration test passes
 
 ---
 
-## Phase 3: Core Data Structures
+## Phase 3: Core Data Structures ✅ COMPLETED
 
 **Goal:** Define Rust types for balance changes and gaps.
 
-**New module:** `src/models/balance_change.rs`
-
-**TDD approach:**
-1. Add integration test that queries and inserts using new structs
-2. Define structs
-3. Implement sqlx traits (FromRow, etc.)
-4. Test passes
+**Implemented in:** `src/handlers/balance_changes/gap_detector.rs`
 
 **Define:**
 ```rust
-pub struct BalanceChange {
-    pub account_id: String,
-    pub token_id: String,
-    pub block_height: i64,
-    pub block_timestamp: i64,
-    pub balance_before: String,
-    pub balance_after: String,
-    pub counterparty: Option<String>,
-    pub actions: serde_json::Value,
-    pub receipt: serde_json::Value,
-}
-
 pub struct BalanceGap {
     pub account_id: String,
     pub token_id: String,
@@ -105,11 +82,11 @@ pub struct BalanceGap {
 
 ---
 
-## Phase 4: Gap Detection Algorithm
+## Phase 4: Gap Detection Algorithm ✅ COMPLETED
 
 **Goal:** Implement logic to scan existing records and find gaps.
 
-**New module:** `src/handlers/balance_changes/gap_detector.rs`
+**Implemented in:** `src/handlers/balance_changes/gap_detector.rs`
 
 **TDD approach:**
 1. Write integration test with known gap scenarios
@@ -180,11 +157,11 @@ WHERE prev_block_height IS NOT NULL
 
 ---
 
-## Phase 5: Balance Query Service
+## Phase 5: Balance Query Service ✅ COMPLETED
 
 **Goal:** Query balance at specific block heights via RPC.
 
-**New module:** `src/handlers/balance_changes/balance/mod.rs` (with submodules: `near.rs`, `ft.rs`, `intents.rs`)
+**Implemented in:** `src/handlers/balance_changes/balance/mod.rs` (with submodules: `near.rs`, `ft.rs`, `intents.rs`)
 
 **TDD approach:**
 1. Write integration test querying real mainnet account
@@ -199,13 +176,12 @@ pub async fn get_balance_at_block(
     token_id: &str,
     block_height: i64,
 ) -> Result<String>
-
-pub async fn get_balance_change_at_block(
-    account_id: &str,
-    token_id: &str,
-    block_height: i64,
-) -> Result<(String, String)> // (before, after)
 ```
+
+**Supports:**
+- NEAR native token
+- Fungible tokens (NEP-141)
+- NEAR Intents multi-tokens (format: `intents.near:nep141:token.near`)
 
 **Integration test:**
 ```rust
@@ -229,11 +205,11 @@ async fn test_query_mainnet_balance() {
 
 ---
 
-## Phase 6: Block Timestamp Service
+## Phase 6: Block Timestamp Service ✅ COMPLETED
 
 **Goal:** Retrieve block timestamps from RPC.
 
-**Add to:** `src/handlers/balance_changes/balance/mod.rs` or new `src/handlers/balance_changes/block_info.rs`
+**Implemented in:** `src/handlers/balance_changes/block_info.rs`
 
 **TDD approach:**
 1. Write integration test querying known mainnet block from test data
@@ -249,16 +225,16 @@ pub async fn get_block_timestamp(
 
 **Review criteria:**
 - Integration test passes with real block
-- Caches results to avoid redundant calls
+- Caches results to avoid redundant calls (moka cache)
 - Clear error handling
 
 ---
 
-## Phase 7: Binary Search for Changes
+## Phase 7: Binary Search for Changes ✅ COMPLETED
 
 **Goal:** Implement RPC-based binary search to find exact block of change.
 
-**New module:** `src/handlers/balance_changes/binary_search.rs`
+**Implemented in:** `src/handlers/balance_changes/binary_search.rs`
 
 **TDD approach:**
 1. Write integration test with known balance change block on mainnet (from test data)
@@ -288,6 +264,11 @@ pub async fn find_balance_change_block(
 - Binary search finds the block
 - Validates it's the correct block
 
+**Tested tokens:**
+- NEAR native (block 151386339)
+- Intents BTC `intents.near:nep141:btc.omft.near` (block 159487770)
+- FT arizcredits.near (block 168568482, balance: 3 ARIZ)
+
 **Review criteria:**
 - Clear binary search logic
 - All tests pass
@@ -295,9 +276,73 @@ pub async fn find_balance_change_block(
 
 ---
 
-## Phase 8: Third-Party API Client - Nearblocks
+## Phase 8: Gap Filler Service (RPC-based) 🔄 IN PROGRESS
 
-**Goal:** Query transaction data from Nearblocks API.
+**Goal:** Main service that fills gaps using RPC-based binary search. This is the core functionality that enables balance change collection without external APIs.
+
+**New module:** `src/handlers/balance_changes/gap_filler.rs`
+
+**TDD approach:**
+1. Update integration test to fill actual gaps end-to-end
+2. Implement orchestration using existing RPC components
+3. Test validates gaps are filled correctly
+
+**Function:**
+```rust
+pub async fn fill_gap(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    gap: &BalanceGap,
+) -> Result<BalanceChange>
+
+pub async fn fill_gaps(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    token_id: &str,
+    start_block: i64,
+) -> Result<usize> // returns number of gaps filled
+```
+
+**Logic for `fill_gap`:**
+1. Use binary search to find exact block where balance changed
+2. Query balance before and after at that block
+3. Get block timestamp
+4. Insert new `BalanceChange` record into database
+5. Return the inserted record
+
+**Logic for `fill_gaps`:**
+1. Call gap detector to find all gaps
+2. For each gap, call `fill_gap`
+3. Return count of gaps filled
+
+**Integration test:**
+```rust
+#[sqlx::test]
+async fn test_fill_gaps_end_to_end(pool: PgPool) -> sqlx::Result<()> {
+    // Insert records with known gaps (from test data)
+    // Call fill_gaps
+    // Verify gaps are filled
+    // Verify balance chain is continuous
+    // Run gap detection again - should find no gaps
+    Ok(())
+}
+```
+
+**Note:** This phase uses only RPC queries (binary search + balance queries). Third-party APIs (Nearblocks, Pikespeak) will be added in later phases to speed up the process by providing transaction hints, but are not required for basic functionality.
+
+**Review criteria:**
+- Orchestrates existing RPC components clearly
+- Integration test demonstrates full workflow
+- Inserts valid records into database
+- Error handling with context
+- Functions < 60 lines
+
+---
+
+## Phase 9: Third-Party API Client - Nearblocks (Optional Optimization)
+
+**Goal:** Query transaction data from Nearblocks API to speed up gap filling.
 
 **New module:** `src/handlers/balance_changes/api_clients/nearblocks.rs`
 
@@ -347,7 +392,7 @@ async fn test_nearblocks_real_query() {
 
 ---
 
-## Phase 9: Third-Party API Client - Pikespeak
+## Phase 10: Third-Party API Client - Pikespeak (Optional Optimization)
 
 **Goal:** Query transaction data from Pikespeak API.
 
@@ -366,7 +411,7 @@ async fn test_nearblocks_real_query() {
 
 ---
 
-## Phase 10: Third-Party API Client - NEAR Intents
+## Phase 11: Third-Party API Client - NEAR Intents (Optional Optimization)
 
 **Goal:** Query transaction data from NEAR Intents explorer.
 
@@ -404,9 +449,9 @@ pub async fn get_batch_balances(
 
 ---
 
-## Phase 11: API Coordinator
+## Phase 12: API Coordinator (Optional Optimization)
 
-**Goal:** Orchestrate API calls with fallback logic.
+**Goal:** Orchestrate API calls with fallback logic to speed up gap filling.
 
 **New module:** `src/handlers/balance_changes/api_coordinator.rs`
 
@@ -429,17 +474,17 @@ pub async fn find_last_transaction_in_range(
 **Unit test scenarios:**
 - Nearblocks succeeds → uses it
 - Nearblocks rate limited → tries Pikespeak
-- All rate limited → returns appropriate error
+- All rate limited → falls back to RPC binary search
 - API returns data → caches it
 
 **Review criteria:**
-- Clear fallback chain
+- Clear fallback chain (APIs → RPC)
 - Well-documented error types
 - Tests demonstrate all fallback paths
 
 ---
 
-## Phase 12: Counterparty Extraction
+## Phase 13: Counterparty Extraction
 
 **Goal:** Extract counterparty from transaction receipts.
 
@@ -473,7 +518,7 @@ pub fn extract_counterparty(
 
 ---
 
-## Phase 13: Token Discovery - NEAR Native
+## Phase 14: Token Discovery - NEAR Native
 
 **Goal:** Discover NEAR balance changes for an account.
 
@@ -511,7 +556,7 @@ async fn test_discover_near_balance(pool: PgPool) {
 
 ---
 
-## Phase 14: Token Discovery - Fungible Tokens
+## Phase 15: Token Discovery - Fungible Tokens
 
 **Goal:** Discover FT tokens from NEAR balance changes.
 
@@ -543,7 +588,7 @@ pub async fn discover_ft_tokens_from_receipt(
 
 ---
 
-## Phase 15: Token Discovery - NEAR Intents
+## Phase 16: Token Discovery - NEAR Intents
 
 **Goal:** Poll NEAR Intents for token holdings.
 
@@ -576,47 +621,6 @@ async fn test_poll_intents_real_account() {
 - Calls mt_tokens_for_owner and mt_batch_balance_of
 - Integration test validates real contract calls
 - Clear separation from transaction-based discovery
-
----
-
-## Phase 16: Gap Filler Service
-
-**Goal:** Main service that fills gaps using all components.
-
-**New module:** `src/handlers/balance_changes/gap_filler.rs`
-
-**TDD approach:**
-1. Update integration test to fill actual gaps end-to-end
-2. Implement orchestration
-3. Test validates gaps are filled correctly
-
-**Function:**
-```rust
-pub async fn fill_gaps(
-    pool: &PgPool,
-    account_id: &str,
-    token_id: &str,
-    start_block: i64,
-) -> Result<usize> // returns number of gaps filled
-```
-
-**Integration test:**
-```rust
-#[sqlx::test]
-async fn test_fill_gaps_end_to_end(pool: PgPool) {
-    // Insert records with known gaps
-    // Call fill_gaps
-    // Verify gaps are filled
-    // Verify balance chain is continuous
-    Ok(())
-}
-```
-
-**Review criteria:**
-- Orchestrates components clearly
-- Integration test demonstrates full workflow
-- Error handling with context
-- Functions < 60 lines
 
 ---
 
