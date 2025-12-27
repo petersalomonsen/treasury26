@@ -1545,3 +1545,133 @@ async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
 
     Ok(())
 }
+
+/// Test continuous monitoring service
+#[sqlx::test]
+async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+    
+    let account_id = "testing-astradao.sputnik-dao.near";
+    let token_id = "near";
+    
+    // Insert a monitored account
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+    
+    // Insert some initial balance changes to establish baseline
+    let network = create_archival_network();
+    let initial_block = 176_900_000i64;
+    let initial_timestamp = 1234567890i64; // Valid positive timestamp
+    
+    sqlx::query!(
+        r#"
+        INSERT INTO balance_changes 
+        (account_id, block_height, block_timestamp, token_id, counterparty, amount, balance_before, balance_after, actions)
+        VALUES ($1, $2, $3, $4, '', '0', '1000000000000000000000000', '1000000000000000000000000', '[]')
+        "#,
+        account_id,
+        initial_block,
+        initial_timestamp,
+        token_id
+    )
+    .execute(&pool)
+    .await?;
+    
+    // Check last_synced_at before monitoring
+    let before_sync = sqlx::query!(
+        r#"
+        SELECT last_synced_at
+        FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+        account_id
+    )
+    .fetch_one(&pool)
+    .await?;
+    
+    assert!(before_sync.last_synced_at.is_none(), "Should not be synced yet");
+    
+    // Run one monitoring cycle
+    println!("Running monitoring cycle...");
+    let up_to_block = 177_000_000i64;
+    run_monitor_cycle(&pool, &network, up_to_block)
+        .await
+        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    
+    // Verify last_synced_at was updated
+    let after_sync = sqlx::query!(
+        r#"
+        SELECT last_synced_at
+        FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+        account_id
+    )
+    .fetch_one(&pool)
+    .await?;
+    
+    assert!(after_sync.last_synced_at.is_some(), "Should be synced after cycle");
+    println!("✓ last_synced_at updated: {:?}", after_sync.last_synced_at);
+    
+    // Verify balance changes were collected
+    let change_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        "#,
+    )
+    .bind(account_id)
+    .bind(token_id)
+    .fetch_one(&pool)
+    .await?;
+    
+    assert!(change_count.0 > 1, "Should have collected more balance changes");
+    println!("✓ Collected {} balance changes", change_count.0);
+    
+    // Test with disabled account - should skip
+    sqlx::query!(
+        r#"
+        UPDATE monitored_accounts
+        SET enabled = false
+        WHERE account_id = $1
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+    
+    let sync_time = after_sync.last_synced_at;
+    
+    // Run another cycle
+    run_monitor_cycle(&pool, &network, up_to_block)
+        .await
+        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    
+    // Verify last_synced_at didn't change (account was disabled)
+    let after_disabled = sqlx::query!(
+        r#"
+        SELECT last_synced_at
+        FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+        account_id
+    )
+    .fetch_one(&pool)
+    .await?;
+    
+    assert_eq!(after_disabled.last_synced_at, sync_time, "Disabled account should not be processed");
+    println!("✓ Disabled accounts are skipped");
+    
+    println!("✓ Continuous monitoring validated");
+    
+    Ok(())
+}
+
