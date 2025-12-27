@@ -1070,6 +1070,10 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
             block_height, 
             balance_before::TEXT as "balance_before!", 
             balance_after::TEXT as "balance_after!",
+            receipt_id,
+            signer_id,
+            receiver_id,
+            counterparty,
             raw_data
         FROM balance_changes
         WHERE account_id = $1 AND token_id = $2
@@ -1090,7 +1094,28 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     let record_gap = &records_final[0];
     assert_eq!(record_gap.block_height, 176927244, "Gap record should be at block 176927244");
     
-    // Verify receipt ID for block 176927244
+    // Verify receipt_id column is populated
+    assert!(!record_gap.receipt_id.is_empty(), "receipt_id array should not be empty");
+    assert_eq!(
+        record_gap.receipt_id[0], "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
+        "Block 176927244 receipt_id column should match"
+    );
+    
+    // Verify signer_id, receiver_id, and counterparty are populated
+    assert_eq!(
+        record_gap.signer_id.as_ref().unwrap(), "blackdragon.tkn.near",
+        "Block 176927244 signer_id should be predecessor"
+    );
+    assert_eq!(
+        record_gap.receiver_id.as_ref().unwrap(), "testing-astradao.sputnik-dao.near",
+        "Block 176927244 receiver_id should match account"
+    );
+    assert_eq!(
+        record_gap.counterparty, "blackdragon.tkn.near",
+        "Block 176927244 counterparty should be predecessor"
+    );
+    
+    // Verify receipt ID for block 176927244 in raw_data (backward compatibility)
     let raw_data_gap = record_gap.raw_data.as_ref().expect("Block 176927244 should have raw_data");
     let receipt_id_gap = raw_data_gap["receipt_id"]
         .as_str()
@@ -1101,17 +1126,80 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     );
     println!("Block 176927244 receipt_id: {}", receipt_id_gap);
     
-    // Print receipt IDs for other blocks
+    // Block 176927247 (from first call)
+    let record1_final = &records_final[1];
+    assert_eq!(record1_final.block_height, 176927247, "Should still have block 176927247");
+    
+    // Verify receipt_id column is populated
+    assert!(!record1_final.receipt_id.is_empty(), "receipt_id array should not be empty");
+    assert_eq!(
+        record1_final.receipt_id[0], "A32isCEQAfFoyyfWPvTH6tysviXr8WbYYkdxADiWMKHo",
+        "Block 176927247 receipt_id column should match"
+    );
+    
+    // Verify signer_id, receiver_id, and counterparty are populated
+    assert_eq!(
+        record1_final.signer_id.as_ref().unwrap(), "blackdragon.tkn.near",
+        "Block 176927247 signer_id should be predecessor"
+    );
+    assert_eq!(
+        record1_final.receiver_id.as_ref().unwrap(), "testing-astradao.sputnik-dao.near",
+        "Block 176927247 receiver_id should match account"
+    );
+    assert_eq!(
+        record1_final.counterparty, "blackdragon.tkn.near",
+        "Block 176927247 counterparty should be predecessor"
+    );
+    
+    // Verify receipt ID for block 176927247 in raw_data (backward compatibility)
     if let Some(ref raw_data) = records_final[1].raw_data {
         if let Some(receipt_id) = raw_data.get("receipt_id").and_then(|v| v.as_str()) {
             println!("Block 176927247 receipt_id: {}", receipt_id);
+            assert_eq!(receipt_id, "A32isCEQAfFoyyfWPvTH6tysviXr8WbYYkdxADiWMKHo", "Block 176927247 raw_data receipt_id should match");
         }
     }
+    
+    // Block 176936471 (from first call)
+    let record2_final = &records_final[2];
+    assert_eq!(record2_final.block_height, 176936471, "Should still have block 176936471");
+    
+    // Verify receipt_id column is populated
+    assert!(!record2_final.receipt_id.is_empty(), "receipt_id array should not be empty");
+    assert_eq!(
+        record2_final.receipt_id[0], "7yLs3ArYQbGoubMXBVZsekwFAfbdqHBbmYrkuVWDonfJ",
+        "Block 176936471 receipt_id column should match"
+    );
+    
+    // Verify signer_id, receiver_id, and counterparty are populated
+    assert_eq!(
+        record2_final.signer_id.as_ref().unwrap(), "olskik.near",
+        "Block 176936471 signer_id should be predecessor"
+    );
+    assert_eq!(
+        record2_final.receiver_id.as_ref().unwrap(), "testing-astradao.sputnik-dao.near",
+        "Block 176936471 receiver_id should match account"
+    );
+    assert_eq!(
+        record2_final.counterparty, "olskik.near",
+        "Block 176936471 counterparty should be predecessor"
+    );
+    
+    // Verify receipt ID for block 176936471 in raw_data (backward compatibility)
     if let Some(ref raw_data) = records_final[2].raw_data {
         if let Some(receipt_id) = raw_data.get("receipt_id").and_then(|v| v.as_str()) {
             println!("Block 176936471 receipt_id: {}", receipt_id);
+            assert_eq!(receipt_id, "7yLs3ArYQbGoubMXBVZsekwFAfbdqHBbmYrkuVWDonfJ", "Block 176936471 raw_data receipt_id should match");
         }
     }
+    
+    assert_eq!(
+        record1_final.balance_before, "10449873124009596399999989",
+        "Block 176927247 balance_before should match"
+    );
+    assert_eq!(
+        record1_final.balance_after, "10449933795827029599999989",
+        "Block 176927247 balance_after should match"
+    );
     
     assert_eq!(
         record_gap.balance_before, "10326123124009596399999989",
@@ -1120,18 +1208,6 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     assert_eq!(
         record_gap.balance_after, "10449873124009596399999989",
         "Block 176927244 balance_after should match"
-    );
-    
-    // Block 176927247 (from first call)
-    let record1_final = &records_final[1];
-    assert_eq!(record1_final.block_height, 176927247, "Should still have block 176927247");
-    assert_eq!(
-        record1_final.balance_before, "10449873124009596399999989",
-        "Block 176927247 balance_before should match"
-    );
-    assert_eq!(
-        record1_final.balance_after, "10449933795827029599999989",
-        "Block 176927247 balance_after should match"
     );
     
     // Block 176936471 (from first call)

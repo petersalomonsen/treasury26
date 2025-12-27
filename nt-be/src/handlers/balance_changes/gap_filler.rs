@@ -638,10 +638,24 @@ async fn insert_balance_change_record(
 
     // Get receipt data for this block
     let block_data = get_block_data(network, account_id, block_height).await?;
+    
+    // Extract receipt information if available
+    let (receipt_ids, signer_id, receiver_id, counterparty) = if let Some(receipt) = block_data.receipts.first() {
+        (
+            vec![receipt.receipt_id.clone()],
+            Some(receipt.predecessor_id.clone()), // predecessor is the signer
+            Some(receipt.receiver_id.clone()),
+            receipt.predecessor_id.clone(), // counterparty is the predecessor
+        )
+    } else {
+        (vec![], None, None, "unknown".to_string())
+    };
+    
     let raw_data = if let Some(receipt) = block_data.receipts.first() {
         serde_json::json!({
             "receipt_id": receipt.receipt_id,
-            "predecessor_id": receipt.predecessor_id
+            "predecessor_id": receipt.predecessor_id,
+            "receiver_id": receipt.receiver_id
         })
     } else {
         serde_json::json!({})
@@ -651,8 +665,8 @@ async fn insert_balance_change_record(
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         ON CONFLICT (account_id, block_height, token_id) DO NOTHING
         "#,
         account_id,
@@ -662,7 +676,10 @@ async fn insert_balance_change_record(
         amount,
         before_bd,
         after_bd,
-        Some("unknown"),
+        &receipt_ids[..],
+        signer_id,
+        receiver_id,
+        counterparty,
         serde_json::json!({}),
         raw_data
     )
