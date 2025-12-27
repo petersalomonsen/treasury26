@@ -376,6 +376,59 @@ async fn test_intents_btc_token_data_loading(pool: PgPool) -> sqlx::Result<()> {
         "Record count should match"
     );
 
+    // Fetch the first record to verify detailed data including receipt
+    let first_record = sqlx::query!(
+        r#"
+        SELECT 
+            block_height,
+            block_timestamp,
+            amount::TEXT as "amount!",
+            balance_before::TEXT as "balance_before!",
+            balance_after::TEXT as "balance_after!",
+            counterparty,
+            raw_data
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        ORDER BY block_height ASC
+        LIMIT 1
+        "#,
+        &account_id,
+        &token_id
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    // Verify specific values from test data
+    assert_eq!(
+        first_record.block_height, 159487770,
+        "First record should be at block 159487770"
+    );
+    assert_eq!(
+        first_record.amount, "32868",
+        "Amount should match test data"
+    );
+    assert_eq!(
+        first_record.balance_before, "0",
+        "Initial BTC balance should be 0"
+    );
+    assert_eq!(
+        first_record.balance_after, "32868",
+        "Balance after should match amount"
+    );
+
+    // Verify receipt ID is stored in raw_data
+    let raw_data = first_record.raw_data.expect("raw_data should exist");
+    let receipt_id = raw_data["receipt_id"]
+        .as_str()
+        .expect("receipt_id should be in raw_data");
+    
+    assert_eq!(
+        receipt_id, "Fu7gfNiU326WKXv34uAg69NuNru2hFUq5CYGQeaZok6N",
+        "Receipt ID should match test data"
+    );
+    
+    println!("✓ Verified first BTC record with receipt ID: {}", receipt_id);
+
     Ok(())
 }
 
@@ -561,13 +614,21 @@ async fn test_intents_btc_balance_continuity(pool: PgPool) -> sqlx::Result<()> {
 
 /// Helper to create archival network config for tests
 fn create_archival_network() -> NetworkConfig {
+    // Load .env files to get FASTNEAR_API_KEY
+    dotenvy::from_filename(".env").ok();
+    dotenvy::from_filename(".env.test").ok();
+    
+    let fastnear_api_key = std::env::var("FASTNEAR_API_KEY")
+        .expect("FASTNEAR_API_KEY must be set in .env");
+    
     // Use fastnear archival RPC which supports historical queries
     NetworkConfig {
         rpc_endpoints: vec![RPCEndpoint::new(
             "https://archival-rpc.mainnet.fastnear.com/"
                 .parse()
                 .unwrap(),
-        )],
+        )
+        .with_api_key(fastnear_api_key)],
         ..NetworkConfig::mainnet()
     }
 }
@@ -918,10 +979,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         .expect("fill_gaps should not error");
 
     println!("First call returned {} records", filled1.len());
-    assert!(
-        !filled1.is_empty(),
-        "First call should seed at least one record"
-    );
+    assert_eq!(filled1.len(), 2, "First call should find exactly 2 records");
 
     let count_after_first: (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1 AND token_id = $2",
@@ -932,11 +990,16 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     println!("Record count after first call: {}", count_after_first.0);
+    assert_eq!(count_after_first.0, 2, "Should have exactly 2 records after first call");
 
-    // Print the seeded record
+    // Fetch all records with detailed information
     let records = sqlx::query!(
         r#"
-        SELECT block_height, balance_before::TEXT as "balance_before!", balance_after::TEXT as "balance_after!"
+        SELECT 
+            block_height, 
+            balance_before::TEXT as "balance_before!", 
+            balance_after::TEXT as "balance_after!",
+            raw_data
         FROM balance_changes
         WHERE account_id = $1 AND token_id = $2
         ORDER BY block_height
@@ -946,6 +1009,31 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     )
     .fetch_all(&pool)
     .await?;
+
+    // Assert on specific blocks and balances from first call
+    assert_eq!(records.len(), 2, "Should have exactly 2 records");
+    
+    let record1 = &records[0];
+    assert_eq!(record1.block_height, 176927247, "First record should be at block 176927247");
+    assert_eq!(
+        record1.balance_before, "10449873124009596399999989",
+        "Block 176927247 balance_before should match"
+    );
+    assert_eq!(
+        record1.balance_after, "10449933795827029599999989",
+        "Block 176927247 balance_after should match"
+    );
+    
+    let record2 = &records[1];
+    assert_eq!(record2.block_height, 176936471, "Second record should be at block 176936471");
+    assert_eq!(
+        record2.balance_before, "10449933795827029599999989",
+        "Block 176936471 balance_before should match"
+    );
+    assert_eq!(
+        record2.balance_after, "10449985392206838099999989",
+        "Block 176936471 balance_after should match"
+    );
 
     for r in &records {
         println!(
@@ -962,6 +1050,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         .expect("fill_gaps should not error on second call");
 
     println!("Second call returned {} records", filled2.len());
+    assert_eq!(filled2.len(), 1, "Second call should find exactly 1 record");
 
     let count_after_second: (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1 AND token_id = $2",
@@ -972,11 +1061,16 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     println!("Record count after second call: {}", count_after_second.0);
+    assert_eq!(count_after_second.0, 3, "Should have exactly 3 records after second call");
 
-    // Print all records after second call
+    // Fetch all records after second call with detailed information
     let records_final = sqlx::query!(
         r#"
-        SELECT block_height, balance_before::TEXT as "balance_before!", balance_after::TEXT as "balance_after!"
+        SELECT 
+            block_height, 
+            balance_before::TEXT as "balance_before!", 
+            balance_after::TEXT as "balance_after!",
+            raw_data
         FROM balance_changes
         WHERE account_id = $1 AND token_id = $2
         ORDER BY block_height
@@ -988,21 +1082,140 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     println!("All records after second call:");
+    
+    // Assert on all three blocks with exact values
+    assert_eq!(records_final.len(), 3, "Should have exactly 3 records total");
+    
+    // Block 176927244 (found in second call)
+    let record_gap = &records_final[0];
+    assert_eq!(record_gap.block_height, 176927244, "Gap record should be at block 176927244");
+    
+    // Verify receipt ID for block 176927244
+    let raw_data_gap = record_gap.raw_data.as_ref().expect("Block 176927244 should have raw_data");
+    let receipt_id_gap = raw_data_gap["receipt_id"]
+        .as_str()
+        .expect("Block 176927244 should have receipt_id in raw_data");
+    assert_eq!(
+        receipt_id_gap, "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
+        "Block 176927244 receipt_id should match"
+    );
+    println!("Block 176927244 receipt_id: {}", receipt_id_gap);
+    
+    // Print receipt IDs for other blocks
+    if let Some(ref raw_data) = records_final[1].raw_data {
+        if let Some(receipt_id) = raw_data.get("receipt_id").and_then(|v| v.as_str()) {
+            println!("Block 176927247 receipt_id: {}", receipt_id);
+        }
+    }
+    if let Some(ref raw_data) = records_final[2].raw_data {
+        if let Some(receipt_id) = raw_data.get("receipt_id").and_then(|v| v.as_str()) {
+            println!("Block 176936471 receipt_id: {}", receipt_id);
+        }
+    }
+    
+    assert_eq!(
+        record_gap.balance_before, "10326123124009596399999989",
+        "Block 176927244 balance_before should match"
+    );
+    assert_eq!(
+        record_gap.balance_after, "10449873124009596399999989",
+        "Block 176927244 balance_after should match"
+    );
+    
+    // Block 176927247 (from first call)
+    let record1_final = &records_final[1];
+    assert_eq!(record1_final.block_height, 176927247, "Should still have block 176927247");
+    assert_eq!(
+        record1_final.balance_before, "10449873124009596399999989",
+        "Block 176927247 balance_before should match"
+    );
+    assert_eq!(
+        record1_final.balance_after, "10449933795827029599999989",
+        "Block 176927247 balance_after should match"
+    );
+    
+    // Block 176936471 (from first call)
+    let record2_final = &records_final[2];
+    assert_eq!(record2_final.block_height, 176936471, "Should still have block 176936471");
+    assert_eq!(
+        record2_final.balance_before, "10449933795827029599999989",
+        "Block 176936471 balance_before should match"
+    );
+    assert_eq!(
+        record2_final.balance_after, "10449985392206838099999989",
+        "Block 176936471 balance_after should match"
+    );
+
     for r in &records_final {
         println!(
             "  Block {}: {} -> {}",
             r.block_height, r.balance_before, r.balance_after
         );
     }
+    
+    // Verify balance continuity across all records
+    assert_eq!(
+        record_gap.balance_after, record1_final.balance_before,
+        "Balance chain should be continuous from block 176927244 to 176927247"
+    );
+    assert_eq!(
+        record1_final.balance_after, record2_final.balance_before,
+        "Balance chain should be continuous from block 176927247 to 176936471"
+    );
 
-    // Second call should have found at least one more record (gap to past)
-    // unless the earliest record already starts from 0
-    if records.first().map(|r| r.balance_before.as_str()) != Some("0") {
-        assert!(
-            count_after_second.0 > count_after_first.0,
-            "Second call should find gap to past when balance_before != 0"
-        );
-    }
+    println!("✓ All block heights and balances verified");
+
+    Ok(())
+}
+
+/// Test getting block data with receipt execution outcomes for a specific block
+/// This test queries block 176927244 to examine receipt data for testing-astradao.sputnik-dao.near
+#[sqlx::test]
+async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::gap_filler::get_block_data;
+
+    let network = create_archival_network();
+    let account_id = "testing-astradao.sputnik-dao.near";
+    let block_height: u64 = 176927244;
+
+    println!("Querying block {} for account {}", block_height, account_id);
+
+    let block_data = get_block_data(&network, account_id, block_height)
+        .await
+        .expect("Should successfully get block data");
+
+    println!("Block data: {:#?}", block_data);
+
+    // Assert specific values from block 176927244
+    assert_eq!(
+        block_data.block_height, 176927244,
+        "Block height should match"
+    );
+    assert_eq!(
+        block_data.block_hash, "EgLRsgTk2dn3bo7x7MRv3PYB5dKD4a4Guw7KYgzZRB3Y",
+        "Block hash should match"
+    );
+    assert_eq!(
+        block_data.receipts.len(), 1,
+        "Should have exactly one receipt affecting the account"
+    );
+
+    // Assert receipt details
+    let receipt = &block_data.receipts[0];
+    assert_eq!(
+        receipt.receipt_id, "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
+        "Receipt ID should match"
+    );
+    assert_eq!(
+        receipt.receiver_id, "testing-astradao.sputnik-dao.near",
+        "Receiver ID should match"
+    );
+    assert_eq!(
+        receipt.predecessor_id, "blackdragon.tkn.near",
+        "Predecessor ID should match"
+    );
+
+    println!("✓ All block 176927244 receipt data verified");
 
     Ok(())
 }
