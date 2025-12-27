@@ -524,113 +524,7 @@ pub async fn get_block_data(
 
 ---
 
-## Phase 14: Token Discovery - NEAR Native
-
-**Goal:** Discover NEAR balance changes for an account.
-
-**New module:** `src/handlers/balance_changes/token_discovery.rs`
-
-**TDD approach:**
-1. Write integration test with known mainnet account (from test data)
-2. Implement NEAR balance check
-3. Test validates balance detection
-
-**Function:**
-```rust
-pub async fn check_near_balance_at_block(
-    account_id: &str,
-    block_height: i64,
-) -> Result<Option<BalanceChange>>
-```
-
-**Integration test:**
-```rust
-#[sqlx::test]
-async fn test_discover_near_balance(pool: PgPool) {
-    let change = check_near_balance_at_block(
-        "webassemblymusic-treasury.sputnik-dao.near",
-        150000000, // Block from test data range
-    ).await.unwrap();
-    // Validate change is detected
-}
-```
-
-**Review criteria:**
-- Focused on NEAR native token only
-- Integration test validates real account
-- Clear error handling
-
----
-
-## Phase 15: Token Discovery - Fungible Tokens
-
-**Goal:** Discover FT tokens from NEAR balance changes.
-
-**Add to:** `src/handlers/balance_changes/token_discovery.rs`
-
-**TDD approach:**
-1. Collect real FT transfer receipt from mainnet (from test data)
-2. Write test with this receipt
-3. Implement FT discovery
-4. Test extracts correct token IDs
-
-**Function:**
-```rust
-pub async fn discover_ft_tokens_from_receipt(
-    receipt: &serde_json::Value,
-) -> Result<Vec<String>>
-```
-
-**Test fixtures:**
-- Receipt with FT transfer event → extracts token
-- Receipt with multiple FT events → extracts all
-- Receipt with no FT events → returns empty
-- Malformed event → handles gracefully
-
-**Review criteria:**
-- Parses NEP-141 event format correctly
-- Tests use real receipt examples
-- Handles malformed events gracefully
-
----
-
-## Phase 16: Token Discovery - NEAR Intents
-
-**Goal:** Poll NEAR Intents for token holdings.
-
-**Add to:** `src/handlers/balance_changes/token_discovery.rs`
-
-**TDD approach:**
-1. Write integration test querying real Intents contract
-2. Implement polling functions
-3. Test validates correct data retrieval
-
-**Function:**
-```rust
-pub async fn poll_intents_tokens(
-    account_id: &str,
-) -> Result<HashMap<String, String>> // token_id -> balance
-```
-
-**Integration test:**
-```rust
-#[tokio::test]
-async fn test_poll_intents_real_account() {
-    let tokens = poll_intents_tokens(
-        "known-account.near"
-    ).await.unwrap();
-    // Validate structure
-}
-```
-
-**Review criteria:**
-- Calls mt_tokens_for_owner and mt_batch_balance_of
-- Integration test validates real contract calls
-- Clear separation from transaction-based discovery
-
----
-
-## Phase 17: Monitored Accounts Table
+## Phase 14: Monitored Accounts Table
 
 **Goal:** Create database table for accounts to monitor continuously.
 
@@ -685,7 +579,7 @@ async fn test_monitored_accounts(pool: PgPool) {
 
 ---
 
-## Phase 18: Continuous Monitoring Service
+## Phase 15: Continuous Monitoring Service
 
 **Goal:** Implement continuous monitoring loop that processes enabled accounts.
 
@@ -736,6 +630,112 @@ async fn test_continuous_monitoring(pool: PgPool) {
 - Updates sync status after processing
 - Integration test validates behavior
 - No blocking operations
+
+---
+
+## Phase 16: Token Discovery - NEAR Native
+
+**Goal:** Discover NEAR balance changes for an account.
+
+**New module:** `src/handlers/balance_changes/token_discovery.rs`
+
+**TDD approach:**
+1. Write integration test with known mainnet account (from test data)
+2. Implement NEAR balance check
+3. Test validates balance detection
+
+**Function:**
+```rust
+pub async fn check_near_balance_at_block(
+    account_id: &str,
+    block_height: i64,
+) -> Result<Option<BalanceChange>>
+```
+
+**Integration test:**
+```rust
+#[sqlx::test]
+async fn test_discover_near_balance(pool: PgPool) {
+    let change = check_near_balance_at_block(
+        "webassemblymusic-treasury.sputnik-dao.near",
+        150000000, // Block from test data range
+    ).await.unwrap();
+    // Validate change is detected
+}
+```
+
+**Review criteria:**
+- Focused on NEAR native token only
+- Integration test validates real account
+- Clear error handling
+
+---
+
+## Phase 17: Token Discovery - Fungible Tokens
+
+**Goal:** Discover FT tokens from NEAR balance changes.
+
+**Add to:** `src/handlers/balance_changes/token_discovery.rs`
+
+**TDD approach:**
+1. Collect real FT transfer receipt from mainnet (from test data)
+2. Write test with this receipt
+3. Implement FT discovery
+4. Test extracts correct token IDs
+
+**Function:**
+```rust
+pub async fn discover_ft_tokens_from_receipt(
+    receipt: &serde_json::Value,
+) -> Result<Vec<String>>
+```
+
+**Test fixtures:**
+- Receipt with FT transfer event → extracts token
+- Receipt with multiple FT events → extracts all
+- Receipt with no FT events → returns empty
+- Malformed event → handles gracefully
+
+**Review criteria:**
+- Parses NEP-141 event format correctly
+- Tests use real receipt examples
+- Handles malformed events gracefully
+
+---
+
+## Phase 18: Token Discovery - NEAR Intents
+
+**Goal:** Poll NEAR Intents for token holdings.
+
+**Add to:** `src/handlers/balance_changes/token_discovery.rs`
+
+**TDD approach:**
+1. Write integration test querying real Intents contract
+2. Implement polling functions
+3. Test validates correct data retrieval
+
+**Function:**
+```rust
+pub async fn poll_intents_tokens(
+    account_id: &str,
+) -> Result<HashMap<String, String>> // token_id -> balance
+```
+
+**Integration test:**
+```rust
+#[tokio::test]
+async fn test_poll_intents_real_account() {
+    let tokens = poll_intents_tokens(
+        "known-account.near"
+    ).await.unwrap();
+    // Validate structure
+}
+```
+
+**Review criteria:**
+- Calls mt_tokens_for_owner and mt_batch_balance_of
+- Integration test validates real contract calls
+- Clear separation from transaction-based discovery
 
 ---
 
