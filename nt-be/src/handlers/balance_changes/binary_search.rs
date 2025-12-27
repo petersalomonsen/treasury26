@@ -163,8 +163,8 @@ mod tests {
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "intents.near:nep141:btc.omft.near",
-            159487769, // Block before the change
-            159487771, // Block after the change
+            159487760, // 10 blocks before the change
+            159487780, // 10 blocks after the change
             "32868",
         ).await.unwrap();
         
@@ -252,10 +252,11 @@ mod tests {
             &balance_after,
         ).await.unwrap();
         
-        // Should find around block 168568481 where balance changed
+        // Should find block 168568482 where balance changed to 3 ARIZ
         assert!(result.is_some(), "Should find the balance change block");
         let block = result.unwrap();
         println!("Found balance change at block: {}", block);
-        assert!(block >= 168568480 && block <= 168568485, "Block should be in the expected range");
+        assert_eq!(block, 168568482, "Balance change should be at block 168568482");
+        assert_eq!(balance_after, "3", "Balance after should be 3 ARIZ (6 decimals, so 3000000 raw = 3)");
     }
 }
