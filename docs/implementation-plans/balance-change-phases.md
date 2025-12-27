@@ -342,150 +342,6 @@ async fn test_fill_gaps_end_to_end(pool: PgPool) -> sqlx::Result<()> {
 
 ---
 
-## Phase 9: Third-Party API Client - Nearblocks (Optional Optimization)
-
-**Goal:** Query transaction data from Nearblocks API to speed up gap filling.
-
-**New module:** `src/handlers/balance_changes/api_clients/nearblocks.rs`
-
-**TDD approach:**
-1. Write integration test with real API (marked `#[ignore]`)
-2. Write unit tests with mocked HTTP responses
-3. Implement client
-4. Tests pass
-
-**Functions:**
-```rust
-pub struct NearBlocksClient {
-    // configuration, rate limiter
-}
-
-impl NearBlocksClient {
-    pub async fn get_transactions(
-        &self,
-        account_id: &str,
-        token_id: &str,
-        from_block: i64,
-        to_block: i64,
-    ) -> Result<Vec<TransactionInfo>>
-}
-```
-
-**Integration test:**
-```rust
-#[tokio::test]
-async fn test_nearblocks_real_query() {
-    let client = NearBlocksClient::new();
-    let txs = client.get_transactions(
-        "webassemblymusic-treasury.sputnik-dao.near",
-        "NEAR",
-        150000000, // Block from test data range
-        150010000,
-    ).await.unwrap();
-    // Validate response structure
-}
-```
-
-**Review criteria:**
-- Clean API abstraction
-- In-memory result caching
-- Rate limit handling (returns specific error type)
-- Integration test demonstrates real usage
-
----
-
-## Phase 10: Third-Party API Client - Pikespeak (Optional Optimization)
-
-**Goal:** Query transaction data from Pikespeak API.
-
-**New module:** `src/handlers/balance_changes/api_clients/pikespeak.rs`
-
-**TDD approach:**
-1. Write integration test
-2. Write unit tests with mocked responses
-3. Implement client with same interface as Nearblocks
-4. Tests pass
-
-**Review criteria:**
-- Consistent interface with Nearblocks client
-- Shared traits if patterns emerge
-- Integration test validates real API usage
-
----
-
-## Phase 11: Third-Party API Client - NEAR Intents (Optional Optimization)
-
-**Goal:** Query transaction data from NEAR Intents explorer.
-
-**New module:** `src/handlers/balance_changes/api_clients/near_intents.rs`
-
-**TDD approach:**
-1. Write integration tests for both transaction queries and balance polls
-2. Write unit tests with mocked responses
-3. Implement client
-4. Tests pass
-
-**Additional functions:**
-```rust
-pub async fn get_tokens_for_owner(
-    &self,
-    account_id: &str,
-) -> Result<Vec<String>>
-
-pub async fn get_batch_balances(
-    &self,
-    account_id: &str,
-    token_ids: &[String],
-) -> Result<HashMap<String, String>>
-```
-
-**Integration tests:**
-- Query transactions for known account
-- Poll tokens for owner
-- Get batch balances
-
-**Review criteria:**
-- Supports both transaction queries and direct balance polling
-- Clear separation between transaction API and view calls
-- All integration tests validate real contract behavior
-
----
-
-## Phase 12: API Coordinator (Optional Optimization)
-
-**Goal:** Orchestrate API calls with fallback logic to speed up gap filling.
-
-**New module:** `src/handlers/balance_changes/api_coordinator.rs`
-
-**TDD approach:**
-1. Write integration test with real APIs
-2. Write unit tests simulating rate limits and failures
-3. Implement fallback chain
-4. Tests validate correct fallback behavior
-
-**Function:**
-```rust
-pub async fn find_last_transaction_in_range(
-    account_id: &str,
-    token_id: &str,
-    from_block: i64,
-    to_block: i64,
-) -> Result<Option<i64>>
-```
-
-**Unit test scenarios:**
-- Nearblocks succeeds → uses it
-- Nearblocks rate limited → tries Pikespeak
-- All rate limited → falls back to RPC binary search
-- API returns data → caches it
-
-**Review criteria:**
-- Clear fallback chain (APIs → RPC)
-- Well-documented error types
-- Tests demonstrate all fallback paths
-
----
-
 ## Phase 13: Counterparty Extraction ✅ COMPLETED
 
 **Goal:** Extract counterparty from transaction receipts.
@@ -633,7 +489,151 @@ async fn test_continuous_monitoring(pool: PgPool) {
 
 ---
 
-## Phase 16: Token Discovery - NEAR Native
+## Phase 16: Third-Party API Client - Nearblocks (Optional Optimization)
+
+**Goal:** Query transaction data from Nearblocks API to speed up gap filling.
+
+**New module:** `src/handlers/balance_changes/api_clients/nearblocks.rs`
+
+**TDD approach:**
+1. Write integration test with real API (marked `#[ignore]`)
+2. Write unit tests with mocked HTTP responses
+3. Implement client
+4. Tests pass
+
+**Functions:**
+```rust
+pub struct NearBlocksClient {
+    // configuration, rate limiter
+}
+
+impl NearBlocksClient {
+    pub async fn get_transactions(
+        &self,
+        account_id: &str,
+        token_id: &str,
+        from_block: i64,
+        to_block: i64,
+    ) -> Result<Vec<TransactionInfo>>
+}
+```
+
+**Integration test:**
+```rust
+#[tokio::test]
+async fn test_nearblocks_real_query() {
+    let client = NearBlocksClient::new();
+    let txs = client.get_transactions(
+        "webassemblymusic-treasury.sputnik-dao.near",
+        "NEAR",
+        150000000, // Block from test data range
+        150010000,
+    ).await.unwrap();
+    // Validate response structure
+}
+```
+
+**Review criteria:**
+- Clean API abstraction
+- In-memory result caching
+- Rate limit handling (returns specific error type)
+- Integration test demonstrates real usage
+
+---
+
+## Phase 17: Third-Party API Client - Pikespeak (Optional Optimization)
+
+**Goal:** Query transaction data from Pikespeak API.
+
+**New module:** `src/handlers/balance_changes/api_clients/pikespeak.rs`
+
+**TDD approach:**
+1. Write integration test
+2. Write unit tests with mocked responses
+3. Implement client with same interface as Nearblocks
+4. Tests pass
+
+**Review criteria:**
+- Consistent interface with Nearblocks client
+- Shared traits if patterns emerge
+- Integration test validates real API usage
+
+---
+
+## Phase 18: Third-Party API Client - NEAR Intents (Optional Optimization)
+
+**Goal:** Query transaction data from NEAR Intents explorer.
+
+**New module:** `src/handlers/balance_changes/api_clients/near_intents.rs`
+
+**TDD approach:**
+1. Write integration tests for both transaction queries and balance polls
+2. Write unit tests with mocked responses
+3. Implement client
+4. Tests pass
+
+**Additional functions:**
+```rust
+pub async fn get_tokens_for_owner(
+    &self,
+    account_id: &str,
+) -> Result<Vec<String>>
+
+pub async fn get_batch_balances(
+    &self,
+    account_id: &str,
+    token_ids: &[String],
+) -> Result<HashMap<String, String>>
+```
+
+**Integration tests:**
+- Query transactions for known account
+- Poll tokens for owner
+- Get batch balances
+
+**Review criteria:**
+- Supports both transaction queries and direct balance polling
+- Clear separation between transaction API and view calls
+- All integration tests validate real contract behavior
+
+---
+
+## Phase 19: API Coordinator (Optional Optimization)
+
+**Goal:** Orchestrate API calls with fallback logic to speed up gap filling.
+
+**New module:** `src/handlers/balance_changes/api_coordinator.rs`
+
+**TDD approach:**
+1. Write integration test with real APIs
+2. Write unit tests simulating rate limits and failures
+3. Implement fallback chain
+4. Tests validate correct fallback behavior
+
+**Function:**
+```rust
+pub async fn find_last_transaction_in_range(
+    account_id: &str,
+    token_id: &str,
+    from_block: i64,
+    to_block: i64,
+) -> Result<Option<i64>>
+```
+
+**Unit test scenarios:**
+- Nearblocks succeeds → uses it
+- Nearblocks rate limited → tries Pikespeak
+- All rate limited → falls back to RPC binary search
+- API returns data → caches it
+
+**Review criteria:**
+- Clear fallback chain (APIs → RPC)
+- Well-documented error types
+- Tests demonstrate all fallback paths
+
+---
+
+## Phase 20: Token Discovery - NEAR Native
 
 **Goal:** Discover NEAR balance changes for an account.
 
@@ -671,7 +671,7 @@ async fn test_discover_near_balance(pool: PgPool) {
 
 ---
 
-## Phase 17: Token Discovery - Fungible Tokens
+## Phase 21: Token Discovery - Fungible Tokens
 
 **Goal:** Discover FT tokens from NEAR balance changes.
 
@@ -703,7 +703,7 @@ pub async fn discover_ft_tokens_from_receipt(
 
 ---
 
-## Phase 18: Token Discovery - NEAR Intents
+## Phase 22: Token Discovery - NEAR Intents
 
 **Goal:** Poll NEAR Intents for token holdings.
 
