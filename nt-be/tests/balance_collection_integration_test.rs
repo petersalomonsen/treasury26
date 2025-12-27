@@ -1501,7 +1501,7 @@ async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
         WHERE account_id = $1
         "#,
         "test-account.near",
-        now.naive_utc()
+        now
     )
     .execute(&pool)
     .await?;

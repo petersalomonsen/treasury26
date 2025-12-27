@@ -2,9 +2,9 @@
 CREATE TABLE monitored_accounts (
     account_id TEXT PRIMARY KEY,
     enabled BOOLEAN NOT NULL DEFAULT true,
-    last_synced_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    last_synced_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Index for querying enabled accounts efficiently
