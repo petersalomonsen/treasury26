@@ -178,66 +178,15 @@ pub async fn fill_gap(
         .into()
     })?;
 
-    // Get balance before and after at the change block
-    let (balance_before, balance_after) =
-        balance::get_balance_change_at_block(network, &gap.account_id, &gap.token_id, block_height)
-            .await
-            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-
-    // Get block timestamp
-    let block_timestamp = block_info::get_block_timestamp(
-        network,
-        block_height,
-        None, // No cache for now
-    )
-    .await
-    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-
-    // Calculate amount (balance_after - balance_before)
-    let before_bd = BigDecimal::from_str(&balance_before)?;
-    let after_bd = BigDecimal::from_str(&balance_after)?;
-    let amount = &after_bd - &before_bd;
-
-    // Get receipt data for this block
-    let block_data = get_block_data(network, &gap.account_id, block_height).await?;
-    let raw_data = if let Some(receipt) = block_data.receipts.first() {
-        serde_json::json!({
-            "receipt_id": receipt.receipt_id,
-            "predecessor_id": receipt.predecessor_id
-        })
-    } else {
-        serde_json::json!({})
-    };
-
-    // Insert the new balance change record
-    sqlx::query!(
-        r#"
-        INSERT INTO balance_changes 
-        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        ON CONFLICT (account_id, block_height, token_id) DO NOTHING
-        "#,
-        gap.account_id,
-        gap.token_id,
-        block_height as i64,
-        block_timestamp,
-        amount,
-        before_bd,
-        after_bd,
-        Some("unknown"), // Counterparty not known without transaction data
-        serde_json::json!({}),
-        raw_data
-    )
-    .execute(pool)
-    .await?;
-
-    Ok(FilledGap {
-        account_id: gap.account_id.clone(),
-        token_id: gap.token_id.clone(),
-        block_height: block_height as i64,
-        block_timestamp,
-        balance_before,
-        balance_after,
+    // Use the shared insert helper
+    let result = insert_balance_change_record(pool, network, &gap.account_id, &gap.token_id, block_height).await?;
+    
+    result.ok_or_else(|| -> GapFillerError {
+        format!(
+            "Failed to insert balance change for gap: {} {} at block {}",
+            gap.account_id, gap.token_id, block_height
+        )
+        .into()
     })
 }
 
@@ -463,72 +412,21 @@ pub async fn seed_initial_balance(
         token_id
     );
 
-    // Get balance before and after at the change block
-    let (balance_before, balance_after) =
-        balance::get_balance_change_at_block(network, account_id, token_id, block_height)
-            .await
-            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-
-    // Get block timestamp
-    let block_timestamp = block_info::get_block_timestamp(network, block_height, None)
-        .await
-        .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-
-    // Calculate amount
-    let before_bd = BigDecimal::from_str(&balance_before)?;
-    let after_bd = BigDecimal::from_str(&balance_after)?;
-    let amount = &after_bd - &before_bd;
-
-    // Get receipt data for this block
-    let block_data = get_block_data(network, account_id, block_height).await?;
-    let raw_data = if let Some(receipt) = block_data.receipts.first() {
-        serde_json::json!({
-            "receipt_id": receipt.receipt_id,
-            "predecessor_id": receipt.predecessor_id
-        })
-    } else {
-        serde_json::json!({})
-    };
-
-    // Insert the seed record
-    sqlx::query!(
-        r#"
-        INSERT INTO balance_changes 
-        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        ON CONFLICT (account_id, block_height, token_id) DO NOTHING
-        "#,
-        account_id,
-        token_id,
-        block_height as i64,
-        block_timestamp,
-        amount,
-        before_bd,
-        after_bd,
-        Some("unknown"),
-        serde_json::json!({}),
-        raw_data
-    )
-    .execute(pool)
-    .await?;
-
-    log::info!(
-        "Seeded initial balance record at block {} for {}/{}: {} -> {}",
-        block_height,
-        account_id,
-        token_id,
-        balance_before,
-        balance_after
-    );
-
-    Ok(Some(FilledGap {
-        account_id: account_id.to_string(),
-        token_id: token_id.to_string(),
-        block_height: block_height as i64,
-        block_timestamp,
-        balance_before,
-        balance_after,
-    }))
+    // Use the shared insert helper
+    let result = insert_balance_change_record(pool, network, account_id, token_id, block_height).await?;
+    
+    if let Some(filled_gap) = &result {
+        log::info!(
+            "Seeded initial balance record at block {} for {}/{}: {} -> {}",
+            filled_gap.block_height,
+            account_id,
+            token_id,
+            filled_gap.balance_before,
+            filled_gap.balance_after
+        );
+    }
+    
+    Ok(result)
 }
 
 /// Fill gap between the latest record and current balance (virtual end boundary)
