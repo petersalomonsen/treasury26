@@ -262,6 +262,55 @@ pub async fn get_account_changes(
     Ok(response.changes)
 }
 
+/// Get transaction details by transaction hash
+///
+/// Queries the EXPERIMENTAL_tx_status RPC endpoint to get full transaction details
+/// including signer, receiver, and actions.
+///
+/// # Arguments
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `tx_hash` - The transaction hash to query
+/// * `account_id` - The account that signed or received the transaction
+///
+/// # Returns
+/// Transaction response with full details, or an error
+pub async fn get_transaction(
+    network: &NetworkConfig,
+    tx_hash: &str,
+    account_id: &str,
+) -> Result<near_jsonrpc_client::methods::tx::RpcTransactionResponse, Box<dyn std::error::Error + Send + Sync>> {
+    use near_jsonrpc_client::methods;
+    use near_primitives::hash::CryptoHash;
+    
+    // Set up JSON-RPC client
+    let rpc_endpoint = network
+        .rpc_endpoints
+        .first()
+        .ok_or("No RPC endpoint configured")?;
+    
+    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
+    
+    if let Some(bearer) = &rpc_endpoint.bearer_header {
+        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
+        client = client.header(auth::Authorization::bearer(token)?);
+    }
+
+    let tx_hash_crypto: CryptoHash = tx_hash.parse()?;
+    let account_id_parsed = account_id.parse()?;
+    
+    let request = methods::tx::RpcTransactionStatusRequest {
+        transaction_info: methods::tx::TransactionInfo::TransactionId {
+            tx_hash: tx_hash_crypto,
+            sender_account_id: account_id_parsed,
+        },
+        wait_until: near_primitives::views::TxExecutionStatus::Final,
+    };
+
+    let response = client.call(request).await?;
+
+    Ok(response)
+}
+
 /// Create a new block timestamp cache
 pub fn new_cache() -> BlockTimestampCache {
     Arc::new(RwLock::new(HashMap::new()))
@@ -362,5 +411,71 @@ mod tests {
             }
             _ => panic!("Expected AccountUpdate value, got {:?}", change.value),
         }
+    }
+
+    #[tokio::test]
+    async fn test_get_account_changes_block_178086209() {
+        use near_primitives::views::{StateChangeValueView, StateChangeCauseView};
+        
+        let state = init_test_state().await;
+
+        println!("\n=== Querying block 178086209 for petersalomonsen.near ===");
+        
+        let changes = get_account_changes(
+            &state.archival_network,
+            "petersalomonsen.near",
+            178086209,
+        )
+        .await
+        .expect("Should successfully query account changes");
+
+        println!("Account changes for petersalomonsen.near at block 178086209:");
+        println!("{:#?}", changes);
+        
+        if changes.is_empty() {
+            println!("✗ No state changes found at block 178086209");
+        } else {
+            println!("✓ Found {} state change(s)", changes.len());
+            
+            for (i, change) in changes.iter().enumerate() {
+                println!("\n--- Change {} ---", i + 1);
+                
+                // Print the cause
+                match &change.cause {
+                    StateChangeCauseView::TransactionProcessing { tx_hash } => {
+                        println!("  Cause: TransactionProcessing");
+                        println!("  Transaction hash: {}", tx_hash);
+                    }
+                    StateChangeCauseView::ReceiptProcessing { receipt_hash } => {
+                        println!("  Cause: ReceiptProcessing");
+                        println!("  Receipt hash: {}", receipt_hash);
+                    }
+                    other => {
+                        println!("  Cause: {:?}", other);
+                    }
+                }
+                
+                // Print the value
+                match &change.value {
+                    StateChangeValueView::AccountUpdate { account_id, account } => {
+                        println!("  Type: AccountUpdate");
+                        println!("  Account: {}", account_id);
+                        println!("  New balance: {} yoctoNEAR", account.amount.as_yoctonear());
+                    }
+                    StateChangeValueView::DataUpdate { account_id, key, value } => {
+                        println!("  Type: DataUpdate");
+                        println!("  Account: {}", account_id);
+                        println!("  Key: {:?}", key);
+                        println!("  Value length: {} bytes", value.len());
+                    }
+                    other => {
+                        println!("  Type: {:?}", other);
+                    }
+                }
+            }
+        }
+        
+        // Assert that we found at least one change since user claims this block has a change
+        assert!(!changes.is_empty(), "Expected to find state changes at block 178086209");
     }
 }

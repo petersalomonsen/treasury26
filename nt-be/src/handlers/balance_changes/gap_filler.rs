@@ -560,7 +560,78 @@ pub async fn insert_balance_change_record(
         (vec![], serde_json::json!({}))
     };
     
+    // If we have a transaction hash, query the full transaction to get signer and receiver
+    let (signer_id, receiver_id, counterparty) = if let Some(tx_hash) = transaction_hashes.first() {
+        match block_info::get_transaction(network, tx_hash, account_id).await {
+            Ok(tx_response) => {
+                if let Some(ref final_outcome) = tx_response.final_execution_outcome {
+                    // final_outcome is FinalExecutionOutcomeViewEnum
+                    // Need to extract transaction from it
+                    use near_primitives::views::FinalExecutionOutcomeViewEnum;
+                    match final_outcome {
+                        FinalExecutionOutcomeViewEnum::FinalExecutionOutcome(outcome) => {
+                            let tx = &outcome.transaction;
+                            let signer = tx.signer_id.to_string();
+                            let receiver = tx.receiver_id.to_string();
+                            
+                            // Counterparty is the receiver when account is signer, or signer when account is receiver
+                            let counterparty = if signer == account_id {
+                                receiver.clone()
+                            } else {
+                                signer.clone()
+                            };
+                            
+                            (Some(signer), Some(receiver), counterparty)
+                        }
+                        FinalExecutionOutcomeViewEnum::FinalExecutionOutcomeWithReceipt(outcome) => {
+                            let tx = &outcome.final_outcome.transaction;
+                            let signer = tx.signer_id.to_string();
+                            let receiver = tx.receiver_id.to_string();
+                            
+                            let counterparty = if signer == account_id {
+                                receiver.clone()
+                            } else {
+                                signer.clone()
+                            };
+                            
+                            (Some(signer), Some(receiver), counterparty)
+                        }
+                    }
+                } else {
+                    log::warn!("Transaction response has no final_execution_outcome");
+                    (None, None, String::new())
+                }
+            }
+            Err(e) => {
+                log::warn!("Failed to query transaction {}: {} - will try receipts", tx_hash, e);
+                // Fall back to receipt-based logic below
+                (None, None, String::new())
+            }
+        }
+    } else {
+        (None, None, String::new())
+    };
+    
     // Get receipt data for additional context (if available)
+    // Only use this if we don't have signer/receiver from transaction
+    let (final_signer, final_receiver, final_counterparty) = if signer_id.is_some() {
+        (signer_id, receiver_id, counterparty)
+    } else {
+        let block_data = block_info::get_block_data(network, account_id, block_height).await
+            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+        
+        if let Some(receipt) = block_data.receipts.first() {
+            (
+                Some(receipt.predecessor_id.to_string()),
+                Some(receipt.receiver_id.to_string()),
+                receipt.predecessor_id.to_string(),
+            )
+        } else {
+            (None, None, "unknown".to_string())
+        }
+    };
+    
+    // Always get receipt data for receipt_ids
     let block_data = block_info::get_block_data(network, account_id, block_height).await
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
     
@@ -568,17 +639,6 @@ pub async fn insert_balance_change_record(
     let receipt_ids: Vec<String> = block_data.receipts.iter()
         .map(|r| r.receipt_id.to_string())
         .collect();
-    
-    // Extract signer/receiver/counterparty from receipts if available
-    let (signer_id, receiver_id, counterparty) = if let Some(receipt) = block_data.receipts.first() {
-        (
-            Some(receipt.predecessor_id.to_string()),
-            Some(receipt.receiver_id.to_string()),
-            receipt.predecessor_id.to_string(),
-        )
-    } else {
-        (None, None, "unknown".to_string())
-    };
 
     // Insert the record
     sqlx::query!(
@@ -597,9 +657,9 @@ pub async fn insert_balance_change_record(
         after_bd,
         &transaction_hashes[..],
         &receipt_ids[..],
-        signer_id,
-        receiver_id,
-        counterparty,
+        final_signer,
+        final_receiver,
+        final_counterparty,
         serde_json::json!({}),
         raw_data
     )

@@ -2138,3 +2138,157 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     
     Ok(())
 }
+
+/// Test FT token discovery for petersalomonsen.near at block 178086209
+/// This block has a NEAR balance change with transaction hash that should be captured
+#[sqlx::test]
+async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
+    
+    let account_id = "petersalomonsen.near";
+    let target_block = 178086209i64;  // Block with NEAR balance change
+    
+    println!("\n=== Testing FT Discovery for {} at Block {} ===", account_id, target_block);
+    println!("This block has a NEAR balance change with transaction hash 2CqhsWNuFEu29TefK2MCDNHtW4B1BioduGQ8rXSi18GR");
+    
+    let network = create_archival_network();
+    
+    // Directly fill gaps for NEAR - use target_block + 1 to ensure we search down to include target_block
+    // The gap filler will seed from 178086210 and search backwards, which should find 178086209
+    println!("\n=== Collecting NEAR Balance Changes ===");
+    let filled = fill_gaps(&pool, &network, account_id, "near", target_block + 1)
+        .await
+        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    
+    println!("Filled {} NEAR balance change gaps", filled.len());
+    
+    // Check specifically for block 178086209
+    let block_209 = sqlx::query!(
+        r#"
+        SELECT 
+            block_height,
+            token_id,
+            counterparty,
+            transaction_hashes,
+            receipt_id,
+            balance_before::TEXT,
+            balance_after::TEXT
+        FROM balance_changes
+        WHERE account_id = $1 AND block_height = 178086209
+        "#,
+        account_id
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    println!("\n=== Specific Query: Block 178086209 (ANY token) ===");
+    if let Some(record) = &block_209 {
+        println!("✓ Block {} FOUND!", record.block_height);
+        println!("  Token: {}", record.token_id.as_ref().unwrap_or(&"N/A".to_string()));
+        println!("  Counterparty: {}", record.counterparty);
+        println!("  Balance: {} -> {}", 
+            record.balance_before.as_ref().unwrap_or(&"N/A".to_string()),
+            record.balance_after.as_ref().unwrap_or(&"N/A".to_string())
+        );
+        if !record.transaction_hashes.is_empty() {
+            println!("  Transaction hash: {}", record.transaction_hashes[0]);
+        }
+        if !record.receipt_id.is_empty() {
+            println!("  Receipt ID: {}", record.receipt_id[0]);
+        }
+    } else {
+        println!("✗ Block 178086209 NOT found in balance_changes table for any token");
+        println!("  This means gap filler didn't detect a NEAR balance change at this block");
+        println!("  Possible reasons:");
+        println!("    - Balance change is for an FT token (not NEAR)");
+        println!("    - Binary search didn't check this specific block");
+        println!("    - Balance was same before/after at this block");
+    }
+    
+    // Check what blocks were captured
+    let records = sqlx::query!(
+        r#"
+        SELECT 
+            block_height,
+            counterparty,
+            transaction_hashes,
+            receipt_id
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = 'near'
+        ORDER BY block_height
+        "#,
+        account_id
+    )
+    .fetch_all(&pool)
+    .await?;
+    
+    println!("\n=== NEAR Balance Changes ===");
+    for record in &records {
+        println!("  Block: {}", record.block_height);
+        println!("    Counterparty: {}", record.counterparty);
+        if !record.transaction_hashes.is_empty() {
+            println!("    Transaction hash: {}", record.transaction_hashes[0]);
+        }
+        if !record.receipt_id.is_empty() {
+            println!("    Receipt ID: {}", record.receipt_id[0]);
+        }
+    }
+    
+    // Find the block with transaction hash but unknown counterparty
+    let blocks_with_unknown_counterparty: Vec<_> = records.iter()
+        .filter(|r| r.counterparty == "unknown" && !r.transaction_hashes.is_empty())
+        .collect();
+    
+    if !blocks_with_unknown_counterparty.is_empty() {
+        println!("\n=== Blocks with 'unknown' counterparty but transaction hash ===");
+        for record in &blocks_with_unknown_counterparty {
+            println!("  Block {}: tx_hash = {}", 
+                record.block_height, 
+                record.transaction_hashes[0]
+            );
+            println!("    These should be analyzed to discover FT contracts");
+        }
+        
+        // This demonstrates the gap in current implementation:
+        // When counterparty is "unknown" but we have a transaction hash,
+        // we should look up the transaction to find FT contract interactions
+        println!("\n⚠ Current limitation: Transactions with 'unknown' counterparty are not analyzed");
+        println!("  Enhancement needed: Query transaction by hash to discover FT contracts");
+    }
+    
+    // Get all counterparties (excluding metadata values)
+    let counterparties: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT counterparty
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = 'near'
+          AND counterparty NOT IN ('seed', 'unknown', 'discovered')
+        ORDER BY counterparty
+        "#
+    )
+    .bind(account_id)
+    .fetch_all(&pool)
+    .await?;
+    
+    println!("\n=== Counterparties to Check for FT Contracts ===");
+    if counterparties.is_empty() {
+        println!("  (none found - only 'unknown' or 'system' counterparties)");
+    } else {
+        for counterparty in &counterparties {
+            println!("  - {}", counterparty);
+            
+            // Try to check if it's an FT contract
+            use nt_be::handlers::balance_changes::balance::ft::get_balance_at_block as get_ft_balance;
+            match get_ft_balance(&network, account_id, counterparty, target_block as u64).await {
+                Ok(balance) => {
+                    println!("    ✓ IS an FT contract! Balance: {}", balance);
+                }
+                Err(_) => {
+                    println!("    ✗ Not an FT contract");
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
