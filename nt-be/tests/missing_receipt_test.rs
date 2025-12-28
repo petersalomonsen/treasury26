@@ -68,19 +68,28 @@ async fn test_fill_gap_to_past_with_insufficient_lookback(pool: PgPool) -> sqlx:
         .await
         .expect("Failed to get timestamp");
     
+    // Convert timestamp to DateTime for block_time
+    let block_time = {
+        let secs = block_timestamp / 1_000_000_000;
+        let nsecs = (block_timestamp % 1_000_000_000) as u32;
+        sqlx::types::chrono::DateTime::from_timestamp(secs, nsecs)
+            .expect("Failed to convert timestamp")
+    };
+    
     // Insert SNAPSHOT with balance_before = balance_after (the bug!)
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, 
+            (account_id, token_id, block_height, block_timestamp, block_time,
              amount, balance_before, balance_after, 
              transaction_hashes, receipt_id, signer_id, receiver_id, counterparty)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         "#,
         account_id,
         token_contract,
         snapshot_block,
         block_timestamp,
+        block_time,
         BigDecimal::from(0),  // amount = 0
         balance_bd.clone(),    // balance_before = current balance (WRONG!)
         balance_bd.clone(),    // balance_after = current balance
