@@ -1,11 +1,8 @@
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 use std::collections::HashSet;
-use std::str::FromStr;
-use bigdecimal::BigDecimal;
 
-use super::gap_filler::fill_gaps;
-use super::block_info::get_block_timestamp;
+use super::gap_filler::{fill_gaps, insert_snapshot_record};
 use super::balance::ft::get_balance_at_block as get_ft_balance;
 
 /// Run one cycle of monitoring for all enabled accounts
@@ -214,65 +211,17 @@ async fn discover_ft_tokens_from_receipts(
         .await?;
 
         if let Some(_start_block) = earliest_block {
-            // Query balance BEFORE the snapshot block (at block - 1)
-            let balance_before = match get_ft_balance(pool, network, account_id, &token_contract, (up_to_block - 1) as u64).await {
-                Ok(b) => b,
+            // Insert a snapshot record using the shared helper
+            match insert_snapshot_record(pool, network, account_id, &token_contract, up_to_block as u64).await {
+                Ok(_) => {
+                    log::info!("Discovered FT token {} for account {}", token_contract, account_id);
+                }
                 Err(e) => {
-                    log::warn!("Failed to get balance before block {} for {}: {}", up_to_block, token_contract, e);
+                    log::warn!("Failed to insert snapshot for discovered token {} at block {}: {}", 
+                              token_contract, up_to_block, e);
                     continue;
                 }
-            };
-
-            // Query balance AFTER the snapshot block (at block)
-            let balance_after = match get_ft_balance(pool, network, account_id, &token_contract, up_to_block as u64).await {
-                Ok(b) => b,
-                Err(e) => {
-                    log::warn!("Failed to get balance after block {} for {}: {}", up_to_block, token_contract, e);
-                    continue;
-                }
-            };
-
-            let balance_before_bd = BigDecimal::from_str(&balance_before)?;
-            let balance_after_bd = BigDecimal::from_str(&balance_after)?;
-            let amount_bd = &balance_after_bd - &balance_before_bd;
-            
-            let block_timestamp = match get_block_timestamp(network, up_to_block as u64, None).await {
-                Ok(ts) => ts,
-                Err(e) => {
-                    log::warn!("Failed to get timestamp for block {}: {}", up_to_block, e);
-                    continue;
-                }
-            };
-
-            // Insert a snapshot record at the up_to_block with correctly measured balances
-            // balance_before and balance_after are queried from before/after the block
-            // The gap detection algorithm will use these to identify intervals needing investigation
-            sqlx::query!(
-                r#"
-                INSERT INTO balance_changes 
-                    (account_id, token_id, block_height, block_timestamp, 
-                     amount, balance_before, balance_after, 
-                     transaction_hashes, receipt_id, signer_id, receiver_id, counterparty)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                ON CONFLICT (account_id, token_id, block_height) DO NOTHING
-                "#,
-                account_id,
-                token_contract,
-                up_to_block,
-                block_timestamp,
-                amount_bd,          // amount: actual change in this specific block
-                balance_before_bd,  // balance_before: measured at block - 1
-                balance_after_bd,   // balance_after: measured at block
-                &Vec::<String>::new(),
-                &Vec::<String>::new(),
-                None::<String>,
-                None::<String>,
-                "SNAPSHOT"  // Snapshot record with correctly measured balances
-            )
-            .execute(pool)
-            .await?;
-
-            log::info!("Discovered FT token {} for account {}", token_contract, account_id);
+            }
         }
     }
 

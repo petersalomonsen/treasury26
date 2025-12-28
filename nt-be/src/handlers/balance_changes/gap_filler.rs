@@ -514,8 +514,116 @@ async fn fill_gap_to_past(
         return Ok(None);
     };
 
-    // Insert the new record
-    insert_balance_change_record(pool, network, account_id, token_id, block_height).await
+    // Try to insert the new record
+    // If it fails with "No receipt found", insert a SNAPSHOT instead at the lookback boundary
+    match insert_balance_change_record(pool, network, account_id, token_id, block_height).await {
+        Ok(result) => Ok(result),
+        Err(e) if e.to_string().contains("No receipt found") => {
+            log::info!(
+                "No receipts found at block {} - balance existed before search range. Inserting SNAPSHOT at lookback boundary.",
+                block_height
+            );
+            
+            // Insert SNAPSHOT at the lookback boundary to mark where our search stopped
+            insert_snapshot_record(pool, network, account_id, token_id, start_block).await
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Helper to insert a SNAPSHOT record at a specific block
+///
+/// This is used when the balance existed before our search range (e.g., lookback window).
+/// Instead of trying to insert a transactional record (which would fail with "No receipt found"),
+/// we insert a SNAPSHOT to mark the boundary of our search.
+///
+/// Verifies that no balance change occurred at this block by querying balance before and after.
+pub async fn insert_snapshot_record(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    token_id: &str,
+    block_height: u64,
+) -> Result<Option<FilledGap>, GapFillerError> {
+    // Get balance before (at block N-1) and after (at block N) to verify no change occurred
+    let (balance_before, balance_after) = balance::get_balance_change_at_block(
+        pool,
+        network,
+        account_id,
+        token_id,
+        block_height,
+    )
+    .await
+    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    // Get block timestamp
+    let block_timestamp = block_info::get_block_timestamp(network, block_height, None)
+        .await
+        .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    let before_bd = BigDecimal::from_str(&balance_before)?;
+    let after_bd = BigDecimal::from_str(&balance_after)?;
+    let amount = &after_bd - &before_bd;
+
+    // Verify this is actually a snapshot (no balance change)
+    if amount != BigDecimal::from(0) {
+        log::warn!(
+            "Block {} has balance change {} -> {} (amount: {}), not inserting as SNAPSHOT",
+            block_height,
+            balance_before,
+            balance_after,
+            amount
+        );
+        return Err(format!(
+            "Cannot insert SNAPSHOT at block {} - balance changed from {} to {}",
+            block_height, balance_before, balance_after
+        )
+        .into());
+    }
+
+    // Insert SNAPSHOT: balance_before = balance_after (no change at this block)
+    sqlx::query!(
+        r#"
+        INSERT INTO balance_changes 
+        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (account_id, block_height, token_id) DO NOTHING
+        "#,
+        account_id,
+        token_id,
+        block_height as i64,
+        block_timestamp,
+        amount,           // amount = 0 for SNAPSHOT
+        before_bd,        // balance_before = balance at (block_height - 1)
+        after_bd,         // balance_after = balance at block_height
+        &Vec::<String>::new(),
+        &Vec::<String>::new(),
+        None::<String>,
+        None::<String>,
+        "SNAPSHOT",
+        serde_json::json!({}),
+        serde_json::json!({})
+    )
+    .execute(pool)
+    .await?;
+
+    log::info!(
+        "Inserted SNAPSHOT at block {} for {}/{}: {} -> {} (lookback boundary)",
+        block_height,
+        account_id,
+        token_id,
+        balance_before,
+        balance_after
+    );
+
+    Ok(Some(FilledGap {
+        account_id: account_id.to_string(),
+        token_id: token_id.to_string(),
+        block_height: block_height as i64,
+        block_timestamp,
+        balance_before,
+        balance_after,
+    }))
 }
 
 /// Helper to insert a balance change record at a specific block
