@@ -80,6 +80,43 @@ Fungible token interactions leave traces in NEAR balance changes through gas fee
 
 This polling acts as a safety net when APIs don't fill all gaps.
 
+## Snapshot Records
+
+Snapshot records are structural reference points that enable the gap detection algorithm to identify intervals where balance changes may have occurred. They use the special counterparty value `"SNAPSHOT"` to distinguish them from transactional records.
+
+### Purpose
+
+Snapshot records serve as boundary markers for the gap-filling algorithm:
+- Provide reference points for detecting balance changes between observations
+- Essential for NEAR Intents tokens where changes can occur without account-initiated transactions
+- Created during regular polling intervals or when first discovering a token
+
+### Critical Requirements
+
+**Balance Measurement:** Snapshot records MUST have correctly measured balances:
+- `balance_before`: Query the actual balance BEFORE the snapshot block
+- `balance_after`: Query the actual balance AFTER the snapshot block  
+- `amount`: Calculate as `balance_after - balance_before`
+
+**Why this matters:** For fungible tokens, the transaction block and the receipt execution block (where balance actually changes) may be different. A snapshot at the transaction block would show no change (`balance_before == balance_after`, `amount = 0`), while the actual balance change occurred in a subsequent block. The gap detection algorithm uses these accurate measurements to identify which blocks need investigation.
+
+### When Snapshots Are Created
+
+1. **Token Discovery:** When a new token is first discovered for an account (via receipt analysis or polling)
+2. **Regular Polling:** Periodic balance checks (especially for NEAR Intents to catch solver-initiated changes)
+3. **Reference Points:** Strategic markers to ensure comprehensive gap detection
+
+### Counterparty Rules
+
+**Snapshot records:** `counterparty = "SNAPSHOT"`
+
+**Transactional records:** MUST have an identifiable counterparty:
+- Account ID (e.g., `"alice.near"`)
+- Contract address (e.g., FT contract hash)
+- `"system"` for protocol-level changes (gas refunds, validator rewards)
+
+**Test Failure Criteria:** If a balance change is detected but no counterparty can be identified, this indicates a bug in the counterparty extraction logic and should fail tests. All balance changes must have traceable origins or destinations.
+
 ## Database Schema Changes
 
 **Required Migration:** Rename the `raw_data` JSONB column to `receipt` to better reflect its purpose of storing full receipt data including logs and events.
