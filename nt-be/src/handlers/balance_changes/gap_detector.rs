@@ -5,6 +5,14 @@
 //! of the next record for the same account and token.
 
 use sqlx::PgPool;
+use sqlx::types::chrono::{DateTime, Utc};
+
+/// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
+fn block_timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
+    let secs = timestamp_nanos / 1_000_000_000;
+    let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
+    DateTime::from_timestamp(secs, nsecs).unwrap_or_else(|| Utc::now())
+}
 
 /// Represents a gap in the balance change chain
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -84,16 +92,18 @@ mod tests {
     #[sqlx::test]
     async fn test_find_gaps_with_gap(pool: PgPool) -> sqlx::Result<()> {
         // Insert records with a gap
+        let block_time1 = block_timestamp_to_datetime(1000000000i64);
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             "#,
             "test.near",
             "NEAR",
             100i64,
             1000000000i64,
+            block_time1,
             BigDecimal::from_str("100").unwrap(),
             BigDecimal::from_str("1000").unwrap(),
             BigDecimal::from_str("900").unwrap(),
@@ -105,16 +115,18 @@ mod tests {
         .await?;
 
         // Gap: balance_before (700) != previous balance_after (900)
+        let block_time2 = block_timestamp_to_datetime(2000000000i64);
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             "#,
             "test.near",
             "NEAR",
             200i64,
             2000000000i64,
+            block_time2,
             BigDecimal::from_str("100").unwrap(),
             BigDecimal::from_str("700").unwrap(),
             BigDecimal::from_str("600").unwrap(),
@@ -139,16 +151,18 @@ mod tests {
     #[sqlx::test]
     async fn test_find_gaps_continuous_chain(pool: PgPool) -> sqlx::Result<()> {
         // Insert continuous records (no gap)
+        let block_time1 = block_timestamp_to_datetime(1000000000i64);
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             "#,
             "test.near",
             "NEAR",
             100i64,
             1000000000i64,
+            block_time1,
             BigDecimal::from_str("100").unwrap(),
             BigDecimal::from_str("1000").unwrap(),
             BigDecimal::from_str("900").unwrap(),
@@ -160,16 +174,18 @@ mod tests {
         .await?;
 
         // Continuous: balance_before (900) == previous balance_after (900)
+        let block_time2 = block_timestamp_to_datetime(2000000000i64);
         sqlx::query!(
             r#"
             INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             "#,
             "test.near",
             "NEAR",
             200i64,
             2000000000i64,
+            block_time2,
             BigDecimal::from_str("100").unwrap(),
             BigDecimal::from_str("900").unwrap(),
             BigDecimal::from_str("800").unwrap(),
@@ -200,17 +216,20 @@ mod tests {
             let before_bd = BigDecimal::from_str(before).unwrap();
             let after_bd = BigDecimal::from_str(after).unwrap();
             let amount = &before_bd - &after_bd;
+            let block_timestamp = block * 10000000;
+            let block_time = block_timestamp_to_datetime(block_timestamp);
 
             sqlx::query!(
                 r#"
                 INSERT INTO balance_changes 
-                (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, counterparty, actions, raw_data)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 "#,
                 "test.near",
                 "NEAR",
                 block,
-                block * 10000000,
+                block_timestamp,
+                block_time,
                 amount,
                 before_bd,
                 after_bd,

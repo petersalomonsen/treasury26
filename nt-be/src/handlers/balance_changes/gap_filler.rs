@@ -17,6 +17,7 @@
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
+use sqlx::types::chrono::{DateTime, Utc};
 use std::str::FromStr;
 
 use crate::handlers::balance_changes::{
@@ -26,6 +27,16 @@ use crate::handlers::balance_changes::{
 
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
+
+/// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
+fn block_timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
+    let secs = timestamp_nanos / 1_000_000_000;
+    let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
+    DateTime::from_timestamp(secs, nsecs).unwrap_or_else(|| {
+        log::warn!("Invalid timestamp {}, using current time", timestamp_nanos);
+        Utc::now()
+    })
+}
 
 /// Result of filling a single gap
 #[derive(Debug, Clone)]
@@ -683,17 +694,20 @@ pub async fn insert_snapshot_record(
     }
 
     // Insert SNAPSHOT: balance_before = balance_after (no change at this block)
+    let block_time = block_timestamp_to_datetime(block_timestamp);
+    
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (account_id, block_height, token_id) DO NOTHING
         "#,
         account_id,
         token_id,
         block_height as i64,
         block_timestamp,
+        block_time,
         amount,           // amount = 0 for SNAPSHOT
         before_bd,        // balance_before = balance at (block_height - 1)
         after_bd,         // balance_after = balance at block_height
@@ -772,17 +786,20 @@ pub async fn insert_unknown_counterparty_record(
     );
 
     // Insert record with UNKNOWN counterparty
+    let block_time = block_timestamp_to_datetime(block_timestamp);
+    
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (account_id, block_height, token_id) DO NOTHING
         "#,
         account_id,
         token_id,
         block_height as i64,
         block_timestamp,
+        block_time,
         amount,
         before_bd,
         after_bd,
@@ -946,17 +963,20 @@ pub async fn insert_balance_change_record(
         .collect();
 
     // Insert the record
+    let block_time = block_timestamp_to_datetime(block_timestamp);
+    
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (account_id, block_height, token_id) DO NOTHING
         "#,
         account_id,
         token_id,
         block_height as i64,
         block_timestamp,
+        block_time,
         amount,
         before_bd,
         after_bd,
