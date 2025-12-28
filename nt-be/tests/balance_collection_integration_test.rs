@@ -1,6 +1,6 @@
 use near_api::{NetworkConfig, RPCEndpoint};
 use nt_be::handlers::balance_changes::gap_detector::find_gaps;
-use nt_be::handlers::balance_changes::gap_filler::{fill_gap, fill_gaps};
+use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::{PgPool, types::BigDecimal};
 use std::str::FromStr;
 
@@ -1611,6 +1611,97 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
     } else {
         println!("\n⚠ NEAR records only have SNAPSHOT counterparty (no transactions yet)");
     }
+    
+    Ok(())
+}
+
+/// Test intents token discovery for webassemblymusic-treasury via run_monitor_cycle
+/// Block 165324279 has a BTC intents balance change of 0.0002 BTC
+#[sqlx::test]
+async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+    
+    let network = create_archival_network();
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    
+    // Block 165324279 has a btc.omft.near intents balance change of 0.0002 BTC
+    // Run monitor from 165324280 - gap filler searches backwards and finds 165324279
+    let monitor_block: i64 = 165_324_280;
+    
+    println!("\n=== Testing Intents Token Discovery via run_monitor_cycle ===");
+    println!("Account: {}", account_id);
+    println!("Monitor block: {}", monitor_block);
+    
+    // Register the account for monitoring
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+    
+    // Run monitor cycle - should discover intents tokens and find balance changes
+    run_monitor_cycle(&pool, &network, monitor_block)
+        .await
+        .expect("Monitor cycle should complete");
+    
+    // Hard assertion: Must discover BTC intents token
+    let btc_token = "intents.near:nep141:btc.omft.near";
+    let btc_discovered: bool = sqlx::query_scalar(
+        r#"SELECT EXISTS(SELECT 1 FROM balance_changes WHERE account_id = $1 AND token_id = $2)"#
+    )
+    .bind(account_id)
+    .bind(btc_token)
+    .fetch_one(&pool)
+    .await?;
+    
+    assert!(btc_discovered, "Must discover {} via run_monitor_cycle", btc_token);
+    
+    // Run second monitor cycle to fill gaps for discovered intents tokens
+    run_monitor_cycle(&pool, &network, monitor_block)
+        .await
+        .expect("Second monitor cycle should complete");
+    
+    // Hard assertion: Must find the BTC balance change at block 165324279
+    let btc_change = sqlx::query!(
+        r#"
+        SELECT block_height, counterparty, amount::TEXT as "amount!", 
+               balance_before::TEXT as "balance_before!", balance_after::TEXT as "balance_after!"
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2 AND counterparty != 'SNAPSHOT'
+        ORDER BY block_height ASC
+        "#,
+        account_id,
+        btc_token
+    )
+    .fetch_all(&pool)
+    .await?;
+    
+    assert!(!btc_change.is_empty(), "Must find non-SNAPSHOT BTC balance change");
+    
+    // Hard assertion: Must find the change at block 165324279
+    let block_165324279_change = btc_change.iter()
+        .find(|c| c.block_height == 165_324_279)
+        .expect("Must find BTC balance change at block 165324279");
+    
+    println!("\n   BTC change at block 165324279:");
+    println!("   Block: {}", block_165324279_change.block_height);
+    println!("   Amount: {}", block_165324279_change.amount);
+    println!("   Balance: {} -> {}", block_165324279_change.balance_before, block_165324279_change.balance_after);
+    println!("   Counterparty: {}", block_165324279_change.counterparty);
+    
+    // Hard assertion: Amount must be 0.0002 BTC (20000 satoshis, BTC has 8 decimals)
+    let amount = BigDecimal::from_str(&block_165324279_change.amount)
+        .expect("Amount must be valid decimal");
+    let expected_amount = BigDecimal::from(20000i64);
+    assert_eq!(amount.abs(), expected_amount, 
+        "BTC change amount must be 20000 satoshis (0.0002 BTC)");
+    
+    println!("\n✓ Found BTC intents balance change: {} satoshis at block 165324279", 
+        block_165324279_change.amount);
     
     Ok(())
 }

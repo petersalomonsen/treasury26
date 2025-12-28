@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use super::gap_filler::{fill_gaps, insert_snapshot_record};
 use super::balance::ft::get_balance_at_block as get_ft_balance;
+use super::token_discovery::snapshot_intents_tokens;
 
 /// Run one cycle of monitoring for all enabled accounts
 /// 
@@ -114,6 +115,18 @@ pub async fn run_monitor_cycle(
                 eprintln!("  {}: Error discovering FT tokens: {}", account_id, e);
             }
         }
+
+        // Discover intents tokens via mt_tokens_for_owner snapshot
+        match discover_intents_tokens(pool, network, account_id, up_to_block).await {
+            Ok(discovered_count) => {
+                if discovered_count > 0 {
+                    println!("  {}: Discovered {} new intents tokens", account_id, discovered_count);
+                }
+            }
+            Err(e) => {
+                eprintln!("  {}: Error discovering intents tokens: {}", account_id, e);
+            }
+        }
     }
 
     println!("Monitor cycle complete");
@@ -221,6 +234,76 @@ async fn discover_ft_tokens_from_receipts(
                               token_contract, up_to_block, e);
                     continue;
                 }
+            }
+        }
+    }
+
+    Ok(seeded_count)
+}
+
+/// Discover intents tokens via mt_tokens_for_owner snapshot
+/// 
+/// This function:
+/// 1. Calls mt_tokens_for_owner on intents.near to get all tokens held by the account
+/// 2. For newly discovered intents tokens, seeds an initial balance change record
+/// 3. The next monitoring cycle will automatically fill gaps for these tokens
+async fn discover_intents_tokens(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    up_to_block: i64,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    // Get current intents tokens for this account
+    let intents_tokens = match snapshot_intents_tokens(network, account_id).await {
+        Ok(tokens) => tokens,
+        Err(e) => {
+            // Not all accounts have intents tokens - this is expected
+            log::debug!("No intents tokens for {}: {}", account_id, e);
+            return Ok(0);
+        }
+    };
+
+    if intents_tokens.is_empty() {
+        return Ok(0);
+    }
+
+    // Get tokens we already know about
+    let known_tokens: HashSet<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT token_id
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id IS NOT NULL
+        "#,
+    )
+    .bind(account_id)
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .collect();
+
+    // Find new intents tokens
+    let new_tokens: Vec<_> = intents_tokens
+        .into_iter()
+        .filter(|t| !known_tokens.contains(t))
+        .collect();
+
+    if new_tokens.is_empty() {
+        return Ok(0);
+    }
+
+    println!("    Discovered {} new intents tokens", new_tokens.len());
+
+    // For each new intents token, insert a snapshot record
+    let mut seeded_count = 0;
+    for token_id in new_tokens {
+        match insert_snapshot_record(pool, network, account_id, &token_id, up_to_block as u64).await {
+            Ok(_) => {
+                log::info!("Discovered intents token {} for account {}", token_id, account_id);
+                seeded_count += 1;
+            }
+            Err(e) => {
+                log::warn!("Failed to insert snapshot for intents token {} at block {}: {}", 
+                          token_id, up_to_block, e);
             }
         }
     }

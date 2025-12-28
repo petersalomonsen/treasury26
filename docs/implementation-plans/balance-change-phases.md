@@ -504,7 +504,7 @@ if tokens.is_empty() {
 
 ---
 
-## Phase 13: Token Discovery - Fungible Tokens
+## Phase 13: Token Discovery - Fungible Tokens ✅ COMPLETED
 
 **Goal:** Discover FT tokens from NEAR balance changes.
 
@@ -538,37 +538,90 @@ pub async fn discover_ft_tokens_from_receipt(
 
 ## Phase 14: Token Discovery - NEAR Intents
 
-**Goal:** Poll NEAR Intents for token holdings.
+**Goal:** Periodically snapshot NEAR Intents token holdings by polling the multi-token contract.
 
-**Add to:** `src/handlers/balance_changes/token_discovery.rs`
+**Implementation approach:**
+Two-step process:
+1. **Snapshot**: Periodically capture the complete token list from `mt_tokens_for_owner` (via monitoring cycle)
+   - Store full token ID as counterparty: `intents.near:nep141:token.near` (preserves FT contract reference)
+   - The FT contract address (`token.near`) can be extracted when needed to query `ft_metadata` for decimals
+   - This maintains full context while allowing access to underlying FT contract information
+2. **Gap filling**: For each token in the snapshot, use existing gap filler logic to find actual balance change blocks
+
+The snapshot tells us WHICH tokens to track and stores the full token format for metadata queries. The gap filler finds WHEN balances changed for those tokens between snapshots.
+
+**Add to:** `src/handlers/balance_changes/token_discovery.rs` (new helper functions)
 
 **TDD approach:**
-1. Write integration test querying real Intents contract
-2. Implement polling functions
-3. Test validates correct data retrieval
+1. Write integration test that polls real Intents contract
+2. Verify it returns complete token list in correct format
+3. Implement snapshot function
+4. Integrate into monitoring cycle - call snapshot, then fill_gaps for each token
+5. Test validates that gap filler discovers actual change blocks between snapshots
 
-**Function:**
+**Functions:**
 ```rust
-pub async fn poll_intents_tokens(
+// Snapshot intents tokens at current block
+pub async fn snapshot_intents_tokens(
+    network: &NetworkConfig,
     account_id: &str,
-) -> Result<HashMap<String, String>> // token_id -> balance
+) -> Result<Vec<String>> // Returns COMPLETE list in format "intents.near:nep141:token.near"
+
+// Internal helper
+async fn call_mt_tokens_for_owner(
+    network: &NetworkConfig,
+    account_id: &str,
+) -> Result<Vec<String>>
 ```
 
-**Integration test:**
+**Integration into monitoring:**
 ```rust
-#[tokio::test]
-async fn test_poll_intents_real_account() {
-    let tokens = poll_intents_tokens(
-        "known-account.near"
-    ).await.unwrap();
-    // Validate structure
+// In account_monitor.rs run_monitor_cycle():
+// After processing existing tokens, snapshot current intents holdings
+let current_intents_tokens = snapshot_intents_tokens(&network, account_id).await?;
+
+// Process each token in the snapshot
+for token in current_intents_tokens {
+    fill_gaps(&pool, &network, account_id, &token, start_block).await?;
 }
 ```
 
+**Key insight:** The monitoring cycle runs multiple times per day, so each cycle naturally creates a new snapshot. Tokens that appear in the list will be tracked; tokens that disappear will stop being tracked. No explicit comparison needed - just process whatever the contract returns at that moment.
+
+**Integration test:**
+```rust
+#[sqlx::test]
+async fn test_snapshot_intents_tokens_over_time(pool: PgPool) -> sqlx::Result<()> {
+    let network = create_archival_network();
+    
+    // Test accounts known to have intents tokens
+    let test_accounts = vec![
+        "petersalomonsen.near",
+        "webassemblymusic-treasury.sputnik-dao.near",
+    ];
+    
+    for account_id in test_accounts {
+        let tokens = snapshot_intents_tokens(&network, account_id).await?;
+        
+        println!("{}: {} intents tokens", account_id, tokens.len());
+        
+        // Should find intents tokens like "intents.near:nep141:btc.omft.near"
+        assert!(!tokens.is_empty());
+        assert!(tokens.iter().all(|t| t.starts_with("intents.near:nep141:")));
+    }
+    
+    Ok(())
+}
+```
+
+**Note:** Testing at different block heights would show the list changing over time, but for integration test we just verify it works at current block.
+
 **Review criteria:**
-- Calls mt_tokens_for_owner and mt_batch_balance_of
-- Integration test validates real contract calls
-- Clear separation from transaction-based discovery
+- Calls mt_tokens_for_owner on intents.near contract
+- Returns COMPLETE list of tokens (not filtered or compared)
+- Returns tokens in correct format for existing balance query system
+- Integrates smoothly into monitoring cycle
+- Integration test validates against real mainnet accounts with known intents holdings
 
 ---
 
