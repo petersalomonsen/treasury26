@@ -4,6 +4,14 @@ use nt_be::handlers::balance_changes::gap_detector::find_gaps;
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
 use std::str::FromStr;
+use sqlx::types::chrono::DateTime;
+
+/// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
+fn timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<sqlx::types::chrono::Utc> {
+    let secs = timestamp_nanos / 1_000_000_000;
+    let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
+    DateTime::from_timestamp(secs, nsecs).expect("Failed to convert timestamp")
+}
 
 /// Helper to create archival network config for tests
 fn create_archival_network() -> NetworkConfig {
@@ -54,18 +62,20 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
     println!("\n--- Step 1: Insert SNAPSHOT records ---");
     
     // SNAPSHOT 1: Block 177485501 with balance 0
+    let timestamp1 = 1766139214182554400_i64;
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, 
+            (account_id, token_id, block_height, block_timestamp, block_time,
              amount, balance_before, balance_after, 
              transaction_hashes, receipt_id, counterparty)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         "#,
         account_id,
         token_id,
         177485501_i64,
-        1766139214182554400_i64,
+        timestamp1,
+        timestamp_to_datetime(timestamp1),
         BigDecimal::from(0),
         BigDecimal::from(0),
         BigDecimal::from(0),
@@ -88,18 +98,20 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
     // SNAPSHOT 2: Block 178085501 with balance 41.414178022306048887375898 (decimal-adjusted from 41414178022306048887375898)
     // npro.nearmobile.near has 24 decimals, so 41414178022306048887375898 raw = 41.414178022306048887375898 decimal
     let balance = BigDecimal::from_str("41.414178022306048887375898").unwrap();
+    let timestamp2 = 1766909444596280416_i64;
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, 
+            (account_id, token_id, block_height, block_timestamp, block_time,
              amount, balance_before, balance_after, 
              transaction_hashes, receipt_id, counterparty)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         "#,
         account_id,
         token_id,
         178085501_i64,
-        1766520990569151000_i64,
+        timestamp2,
+        timestamp_to_datetime(timestamp2),
         BigDecimal::from(0),
         balance.clone(),
         balance.clone(),
@@ -121,18 +133,20 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
     }
     
     // SNAPSHOT 3: Block 178685501 with balance 41414178022306048887375898
+    let timestamp3 = 1767679675056280416_i64;
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, 
+            (account_id, token_id, block_height, block_timestamp, block_time,
              amount, balance_before, balance_after, 
              transaction_hashes, receipt_id, counterparty)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         "#,
         account_id,
         token_id,
         178685501_i64,
-        1766909443996280300_i64,
+        timestamp3,
+        timestamp_to_datetime(timestamp3),
         BigDecimal::from(0),
         balance.clone(),
         balance.clone(),

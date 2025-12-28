@@ -2,6 +2,14 @@ use near_api::{NetworkConfig, RPCEndpoint};
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
+use sqlx::types::chrono::{DateTime, Utc};
+
+/// Helper to convert nanosecond timestamp to DateTime<Utc>
+fn timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
+    let secs = timestamp_nanos / 1_000_000_000;
+    let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
+    DateTime::from_timestamp(secs, nsecs).expect("Failed to convert timestamp")
+}
 
 /// Helper to create archival network config for tests
 fn create_archival_network() -> NetworkConfig {
@@ -59,18 +67,20 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
     // Insert a SNAPSHOT record at block 178707314 with balance 0 -> 0
     // This simulates monitoring creating a SNAPSHOT at a recent block
     let snapshot_block: i64 = 178707314;
+    let snapshot_timestamp = 1766922697036882400_i64;
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-            (account_id, token_id, block_height, block_timestamp, 
+            (account_id, token_id, block_height, block_timestamp, block_time,
              amount, balance_before, balance_after, 
              transaction_hashes, receipt_id, counterparty)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         "#,
         account_id,
         token_id,
         snapshot_block,
-        1766922697036882400_i64,
+        snapshot_timestamp,
+        timestamp_to_datetime(snapshot_timestamp),
         BigDecimal::from(0),
         BigDecimal::from(0),
         BigDecimal::from(0),
