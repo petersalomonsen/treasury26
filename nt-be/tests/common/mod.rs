@@ -35,10 +35,11 @@ impl TestServer {
                 .get(format!("http://localhost:{}/api/health", port))
                 .send()
                 .await
-                && response.status().is_success() {
-                    println!("Server ready after {} attempts", attempt + 1);
-                    return TestServer { process, port };
-                }
+                && response.status().is_success()
+            {
+                println!("Server ready after {} attempts", attempt + 1);
+                return TestServer { process, port };
+            }
         }
 
         panic!("Server failed to start within timeout");
