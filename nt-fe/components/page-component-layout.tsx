@@ -60,7 +60,7 @@ export function PageComponentLayout({ title, description, backButton, children }
                   }
                 }}
               >
-                <ArrowLeft className="size-5 stroke-3" />
+                <ArrowLeft className="size-5 stroke-2" />
               </Button>
             )}
             <div className="flex items-baseline gap-2">
