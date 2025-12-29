@@ -77,27 +77,25 @@ export function RoleSelector({
                     <ChevronDown className="size-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="start">
-                <div className="space-y-1 p-4">
-                    {ROLES.map((role) => (
-                        <label
-                            key={role.id}
-                            className="flex cursor-pointer items-start space-x-3 rounded-md p-3 transition-colors hover:bg-accent"
-                        >
-                            <Checkbox
-                                checked={selectedRoles.includes(role.id)}
-                                onCheckedChange={() => handleRoleToggle(role.id)}
-                                className="mt-0.5"
-                            />
-                            <div className="flex-1 space-y-1">
-                                <p className="text-sm font-medium leading-none">{role.title}</p>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {role.description}
-                                </p>
-                            </div>
-                        </label>
-                    ))}
-                </div>
+            <PopoverContent className="w-80 p-1 gap-1 flex flex-col" align="end">
+                {ROLES.map((role) => (
+                    <label
+                        key={role.id}
+                        className="flex cursor-pointer items-start space-x-3 rounded-md p-3 transition-colors hover:bg-accent"
+                    >
+                        <Checkbox
+                            checked={selectedRoles.includes(role.id)}
+                            onCheckedChange={() => handleRoleToggle(role.id)}
+                            className="mt-0.5"
+                        />
+                        <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium leading-none">{role.title}</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                {role.description}
+                            </p>
+                        </div>
+                    </label>
+                ))}
             </PopoverContent>
         </Popover >
     )
