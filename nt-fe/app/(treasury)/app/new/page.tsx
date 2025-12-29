@@ -18,6 +18,7 @@ import { CircleCheck, Database, Info, UsersRound, Vote } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ROLES } from "@/components/role-selector";
 
 const treasuryFormSchema = z.object({
     details: z.object({
@@ -229,7 +230,7 @@ export default function NewTreasuryPage() {
             members: [
                 {
                     accountId: "",
-                    roles: ["governance", "requestor", "financial"],
+                    roles: ROLES.map(r => r.id),
                 },
             ],
         },

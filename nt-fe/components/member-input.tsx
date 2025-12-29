@@ -6,13 +6,14 @@ import { FormField, FormMessage } from "./ui/form";
 import { ArrayPath, Control, FieldValues, Path, PathValue, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import z from "zod";
 import { AccountIdInput, accountIdSchema } from "./account-id-input";
-import { RoleSelector } from "./role-selector";
+import { ROLES, RoleSelector } from "./role-selector";
 import { Pill } from "./pill";
 import { Plus, Trash2 } from "lucide-react";
+import { Tooltip } from "./tooltip";
 
 export const memberSchema = z.array(z.object({
     accountId: accountIdSchema,
-    roles: z.array(z.enum(["governance", "requestor", "financial"])).min(1, "At least one role is required"),
+    roles: z.array(z.enum(ROLES.map(r => r.id))).min(1, "At least one role is required"),
 })).superRefine((data, ctx) => {
     const sortedData = data.sort((a, b) => a.accountId.localeCompare(b.accountId));
     for (const [index, member] of sortedData.entries()) {
@@ -86,7 +87,14 @@ export function MemberInput<
                                             />
                                         ) : (
                                             <div className="flex gap-1">
-                                                {field.value.map((role: string) => <Pill key={role} title={role.charAt(0).toUpperCase() + role.slice(1)} variant="secondary" />)}
+                                                {ROLES.filter(r => field.value.includes(r.id)).map(r => {
+                                                    console.log(r);
+                                                    return (
+                                                        <Tooltip key={r.id} content={r.description} triggerProps={{ asChild: false }}>
+                                                            <Pill title={r.title} variant="secondary" />
+                                                        </Tooltip>
+                                                    )
+                                                })}
                                             </div>
                                         )}
                                     </>

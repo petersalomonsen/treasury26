@@ -39,10 +39,10 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                             "whitespace-nowrap transition-all duration-300 ease-in-out",
                             "pb-2 relative border-none bg-transparent shadow-none",
                             "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0",
-                            "after:transition-all after:duration-300 after:ease-in-out",
+                            "after:transition-all after:duration-300 after:ease-in-out after:rounded-full",
                             index <= currentStep
-                                ? 'text-foreground after:bg-primary after:h-[3px]'
-                                : 'text-muted-foreground after:bg-border after:h-[2px]'
+                                ? 'text-foreground after:bg-foreground after:h-[3px]'
+                                : 'text-muted-foreground after:bg-muted-foreground/20 after:h-[3px]'
 
                         )}
                     >
