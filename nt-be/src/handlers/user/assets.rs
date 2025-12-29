@@ -473,7 +473,9 @@ fn build_intents_tokens(
     let mut simplified_tokens: Vec<SimplifiedToken> = tokens_with_balances
         .into_iter()
         .filter_map(|(token_id, balance)| {
-            let metadata = enriched_tokens.iter().find(|t| t.intents_token_id.as_ref() == Some(&token_id))?;
+            let metadata = enriched_tokens
+                .iter()
+                .find(|t| t.intents_token_id.as_ref() == Some(&token_id))?;
 
             // Extract contract_id (remove prefix like "nep141:" if present)
             let contract_id = if token_id.starts_with("nep141:") {
@@ -586,12 +588,8 @@ pub async fn get_user_assets(
 
     // Build REF Finance tokens with enriched metadata
     let (all_tokens, user_balances, token_prices) = ref_data_result?;
-    let mut all_simplified_tokens = build_simplified_tokens(
-        all_tokens,
-        &user_balances,
-        &token_prices,
-        &enriched_tokens,
-    );
+    let mut all_simplified_tokens =
+        build_simplified_tokens(all_tokens, &user_balances, &token_prices, &enriched_tokens);
 
     // Build intents tokens with enriched metadata
     let intents_balances = intents_data_result.unwrap_or_else(|e| {
