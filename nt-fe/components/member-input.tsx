@@ -119,12 +119,12 @@ export function MemberInput<
                         </div>
                     </div>
                 ))}
-                <Button variant={"ghost"} type="button" className="w-fit pl-0! group hover:text-muted-foreground" onClick={() => append({ accountId: "", roles: ["requestor"] } as TMemberPath extends ArrayPath<TFieldValues>
+                <Button variant={"ghost"} type="button" className="w-fit" onClick={() => append({ accountId: "", roles: ["requestor"] } as TMemberPath extends ArrayPath<TFieldValues>
                     ? PathValue<TFieldValues, TMemberPath> extends Member
                     ? PathValue<TFieldValues, TMemberPath>[number]
                     : never
                     : never)}>
-                    <Plus className="size-4 text-primary group-hover:text-muted-foreground" />
+                    <Plus className="size-4 text-primary" />
                     Add New Member
                 </Button>
             </div>
