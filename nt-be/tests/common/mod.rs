@@ -10,7 +10,7 @@ pub struct TestServer {
 impl TestServer {
     pub async fn start() -> Self {
         // Start the server in the background
-        let process = Command::new("cargo")
+        let mut process = Command::new("cargo")
             .args(["run", "--bin", "nt-be"])
             .env("PORT", "3001")
             .env("RUST_LOG", "info")
@@ -42,6 +42,9 @@ impl TestServer {
             }
         }
 
+        // Kill process before panicking to avoid zombie
+        let _ = process.kill();
+        let _ = process.wait();
         panic!("Server failed to start within timeout");
     }
 
