@@ -254,7 +254,7 @@ async fn test_load_and_query_balance_changes() {
     assert_eq!(response.status(), 200);
     let changes: Vec<BalanceChange> = response.json().await.expect("Failed to parse response");
     println!("  Retrieved {} balance changes", changes.len());
-    assert!(changes.len() > 0, "Should have balance changes");
+    assert!(!changes.is_empty(), "Should have balance changes");
     assert!(changes.len() <= 10, "Should respect limit");
 
     // Test 2: Query with token filter
@@ -271,7 +271,7 @@ async fn test_load_and_query_balance_changes() {
     assert_eq!(response.status(), 200);
     let near_changes: Vec<BalanceChange> = response.json().await.expect("Failed to parse response");
     println!("  Retrieved {} NEAR balance changes", near_changes.len());
-    assert!(near_changes.len() > 0, "Should have NEAR balance changes");
+    assert!(!near_changes.is_empty(), "Should have NEAR balance changes");
 
     // Verify all results are NEAR token
     for change in &near_changes {

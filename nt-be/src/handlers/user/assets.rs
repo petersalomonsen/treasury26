@@ -279,7 +279,11 @@ fn get_token_balance(
 }
 
 /// Gets the appropriate icon for a token
-fn get_token_icon(token_id: &str, metadata: &TokenMetadata, metadata_icon: Option<&String>) -> String {
+fn get_token_icon(
+    token_id: &str,
+    metadata: &TokenMetadata,
+    metadata_icon: Option<&String>,
+) -> String {
     // First check if we have metadata icon from enriched tokens
     if let Some(icon) = metadata_icon {
         return icon.clone();
@@ -363,7 +367,10 @@ fn build_simplified_tokens(
     all_tokens: HashMap<String, TokenMetadata>,
     user_balances: &FastNearResponse,
     token_prices: &HashMap<String, serde_json::Value>,
-    enriched_metadata_map: &HashMap<String, crate::handlers::intents::supported_tokens::EnrichedTokenMetadata>,
+    enriched_metadata_map: &HashMap<
+        String,
+        crate::handlers::intents::supported_tokens::EnrichedTokenMetadata,
+    >,
 ) -> Vec<SimplifiedToken> {
     let balance_map = build_balance_map(user_balances);
     let mut simplified_tokens = all_tokens
@@ -376,12 +383,14 @@ fn build_simplified_tokens(
             };
 
             // Try to find enriched metadata by near_token_id
-            let enriched_meta = enriched_metadata_map
-                .values()
-                .find(|m| {
-                    (m.near_token_id.as_ref().map(|id| id == &token_id).unwrap_or(false)
-                        || m.contract_address == token_id) && m.chain_name == "near"
-                });
+            let enriched_meta = enriched_metadata_map.values().find(|m| {
+                (m.near_token_id
+                    .as_ref()
+                    .map(|id| id == &token_id)
+                    .unwrap_or(false)
+                    || m.contract_address == token_id)
+                    && m.chain_name == "near"
+            });
 
             // Use price from enriched metadata first, then fallback to ref finance prices
             let price = enriched_meta
@@ -398,18 +407,16 @@ fn build_simplified_tokens(
                 let decimals = token_metadata.decimals;
 
                 // Use enriched metadata first, fallback to token_metadata
-                let  symbol = enriched_meta
+                let symbol = enriched_meta
                     .map(|m| m.symbol.clone())
                     .unwrap_or_else(|| token_metadata.symbol.clone());
-                let  name = enriched_meta
-                    .map(|m| m.name.clone())
-                    .unwrap_or_else(|| {
-                        if token_metadata.name.is_empty() {
-                            token_metadata.symbol.clone()
-                        } else {
-                            token_metadata.name.clone()
-                        }
-                    });
+                let name = enriched_meta.map(|m| m.name.clone()).unwrap_or_else(|| {
+                    if token_metadata.name.is_empty() {
+                        token_metadata.symbol.clone()
+                    } else {
+                        token_metadata.name.clone()
+                    }
+                });
 
                 let is_near = token_id == "near";
                 let id = if is_near {
@@ -430,7 +437,11 @@ fn build_simplified_tokens(
                     price,
                     symbol,
                     name,
-                    icon: get_token_icon(&token_id, &token_metadata, enriched_meta.and_then(|m| m.icon.as_ref())),
+                    icon: get_token_icon(
+                        &token_id,
+                        &token_metadata,
+                        enriched_meta.and_then(|m| m.icon.as_ref()),
+                    ),
                     network: "near".to_string(),
                     residency: if is_near {
                         TokenResidency::Near
@@ -459,7 +470,10 @@ fn build_simplified_tokens(
 /// Builds intents tokens from enriched metadata
 fn build_intents_tokens(
     tokens_with_balances: Vec<(String, String)>,
-    enriched_metadata_map: &HashMap<String, crate::handlers::intents::supported_tokens::EnrichedTokenMetadata>,
+    enriched_metadata_map: &HashMap<
+        String,
+        crate::handlers::intents::supported_tokens::EnrichedTokenMetadata,
+    >,
 ) -> Vec<SimplifiedToken> {
     // Build simplified tokens with metadata
     let mut simplified_tokens: Vec<SimplifiedToken> = tokens_with_balances
@@ -482,7 +496,10 @@ fn build_intents_tokens(
 
             let symbol = metadata.symbol.clone();
             let name = metadata.name.clone();
-            let icon = metadata.icon.clone().unwrap_or_else(|| NEAR_ICON.to_string());
+            let icon = metadata
+                .icon
+                .clone()
+                .unwrap_or_else(|| NEAR_ICON.to_string());
 
             Some(SimplifiedToken {
                 id: format!("intents:{}", metadata.defuse_asset_id),
@@ -561,11 +578,8 @@ pub async fn get_user_assets(
     };
 
     // Fetch all data concurrently
-    let (enriched_tokens_result, ref_data_result, intents_data_result) = tokio::join!(
-        enriched_tokens_future,
-        ref_data_future,
-        intents_data_future
-    );
+    let (enriched_tokens_result, ref_data_result, intents_data_result) =
+        tokio::join!(enriched_tokens_future, ref_data_future, intents_data_future);
 
     // Handle enriched tokens result
     let enriched_tokens = enriched_tokens_result.map_err(|e| {
@@ -602,13 +616,15 @@ pub async fn get_user_assets(
 
     // Sort combined list by balance (highest first)
     all_simplified_tokens = all_simplified_tokens
-    .into_iter()
-    .filter(|t| t.balance.parse::<u128>().unwrap_or(0) > 0)
-    .collect::<Vec<_>>();
+        .into_iter()
+        .filter(|t| t.balance.parse::<u128>().unwrap_or(0) > 0)
+        .collect::<Vec<_>>();
     all_simplified_tokens.sort_by(|a, b| {
         let a_val: u128 = a.balance.parse().unwrap_or(0);
         let b_val: u128 = b.balance.parse().unwrap_or(0);
-        b_val.partial_cmp(&a_val).unwrap_or(std::cmp::Ordering::Equal)
+        b_val
+            .partial_cmp(&a_val)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let result_value = serde_json::to_value(&all_simplified_tokens).map_err(|e| {

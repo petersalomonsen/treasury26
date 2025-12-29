@@ -11,7 +11,7 @@ impl TestServer {
     pub async fn start() -> Self {
         // Start the server in the background
         let process = Command::new("cargo")
-            .args(&["run", "--bin", "nt-be"])
+            .args(["run", "--bin", "nt-be"])
             .env("PORT", "3001")
             .env("RUST_LOG", "info")
             .env(
@@ -35,12 +35,10 @@ impl TestServer {
                 .get(format!("http://localhost:{}/api/health", port))
                 .send()
                 .await
-            {
-                if response.status().is_success() {
+                && response.status().is_success() {
                     println!("Server ready after {} attempts", attempt + 1);
                     return TestServer { process, port };
                 }
-            }
         }
 
         panic!("Server failed to start within timeout");
