@@ -3,6 +3,7 @@
 //! Functions to query FT token balances at specific block heights via RPC.
 //! Returns decimal-adjusted balance values for storage and display.
 
+use near_api::types::json::U128;
 use near_api::{AccountId, Contract, NetworkConfig, Reference};
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -70,27 +71,12 @@ pub async fn get_balance_at_block(
 
                 // Parse the raw U128 value from the contract response
                 // NEP-141 ft_balance_of returns a U128 which can be either a string or number in JSON
-                let raw_balance = match &data.data {
-                    serde_json::Value::String(s) => s.clone(),
-                    serde_json::Value::Number(n) => n.to_string(),
-                    _ => {
-                        return Err(format!(
-                            "Unexpected ft_balance_of response type: {:?}",
-                            data.data
-                        )
-                        .into());
-                    }
-                };
-
-                // Assert: The value should be a valid U128 (digits only, no decimals)
-                assert!(
-                    raw_balance.chars().all(|c| c.is_ascii_digit()),
-                    "ft_balance_of must return a U128 value, got: {}",
-                    raw_balance
-                );
+                // Using near_api::types::json::U128 handles both formats automatically
+                let raw_balance: U128 = serde_json::from_value(data.data.clone())
+                    .map_err(|e| format!("Failed to deserialize U128 balance: {}", e))?;
 
                 // Convert raw U128 to decimal-adjusted value for storage
-                let decimal_balance = convert_raw_to_decimal(&raw_balance, decimals)?;
+                let decimal_balance = convert_raw_to_decimal(&raw_balance.0.to_string(), decimals)?;
 
                 return Ok(decimal_balance);
             }

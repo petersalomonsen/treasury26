@@ -351,46 +351,6 @@ async fn discover_intents_tokens(
     Ok(seeded_count)
 }
 
-/// Discover new tokens for a monitored account by querying its current balance
-///
-/// This checks the account's current state and adds any tokens with non-zero balances
-/// to the monitoring list by inserting initial balance change records.
-pub async fn discover_account_tokens(
-    pool: &PgPool,
-    _network: &NetworkConfig,
-    account_id: &str,
-    _current_block: i64,
-) -> Result<usize, Box<dyn std::error::Error>> {
-    // Get tokens we already know about
-    let known_tokens: HashSet<String> = sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT token_id
-        FROM balance_changes
-        WHERE account_id = $1 AND token_id IS NOT NULL
-        "#,
-    )
-    .bind(account_id)
-    .fetch_all(pool)
-    .await?
-    .into_iter()
-    .collect();
-
-    println!(
-        "Account {} has {} known tokens",
-        account_id,
-        known_tokens.len()
-    );
-
-    // TODO: Query account's current balances for all tokens
-    // This would require:
-    // 1. Query FT contracts the account has interacted with
-    // 2. Check balance for each token
-    // 3. Insert initial balance_change records for new tokens with non-zero balances
-
-    // For now, just return 0 as this is a placeholder for Phase 20-22 (Token Discovery)
-    Ok(0)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
