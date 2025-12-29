@@ -24,9 +24,10 @@ export function useAggregatedTokens(tokens: TreasuryAsset[]): AggregatedAsset[] 
   return useMemo(() => {
     // Group tokens by symbol
     const grouped = tokens.reduce((acc, token) => {
-      if (!acc[token.symbol]) {
-        acc[token.symbol] = {
-          symbol: token.symbol,
+      const symbol = token.symbol === "wNEAR" ? "NEAR" : token.symbol;
+      if (!acc[symbol]) {
+        acc[symbol] = {
+          symbol: symbol,
           name: token.name,
           icon: token.icon,
           totalBalanceUSD: 0,
@@ -39,15 +40,15 @@ export function useAggregatedTokens(tokens: TreasuryAsset[]): AggregatedAsset[] 
       }
 
       // Aggregate USD balance
-      acc[token.symbol].totalBalanceUSD += token.balanceUSD;
+      acc[symbol].totalBalanceUSD += token.balanceUSD;
 
       // Normalize and aggregate token balance (accounting for different decimals)
-      acc[token.symbol].totalBalance = acc[token.symbol].totalBalance.add(
+      acc[symbol].totalBalance = acc[symbol].totalBalance.add(
         Big(formatBalance(token.balance.toString(), token.decimals))
       );
 
       // Track all network instances
-      acc[token.symbol].networks.push(token);
+      acc[symbol].networks.push(token);
 
       return acc;
     }, {} as Record<string, AggregatedAsset>);

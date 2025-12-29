@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, memo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { ArrowUpDown, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
 import {
   useReactTable,
@@ -26,56 +26,9 @@ import { TreasuryAsset } from "@/lib/api";
 import { formatBalance, formatCurrency } from "@/lib/utils";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
 import Big from "big.js";
+import { NetworkDisplay, BalanceCell } from "./token-display";
 
 const columnHelper = createColumnHelper<AggregatedAsset>();
-
-const NetworkDisplay = memo(({ asset }: { asset: TreasuryAsset }) => {
-  let network;
-  let type;
-  switch (asset.residency) {
-    case "Ft":
-      network = asset.network;
-      type = "Fungible Token";
-      break;
-    case "Intents":
-      network = asset.network;
-      type = "Intents Token";
-      break;
-    case "Near":
-      network = asset.network;
-      type = "Native Token";
-      break;
-  }
-
-  return (
-    <div className="flex items-center gap-3">
-      <img src={asset.icon} alt={asset.symbol} className="size-6 rounded-full" />
-      <div className="text-sm font-medium flex items-center gap-2">
-        <span className="uppercase">{network}</span>
-        <span className="text-xs text-muted-foreground">
-          {type}
-        </span>
-      </div>
-    </div>
-  );
-});
-
-NetworkDisplay.displayName = "NetworkDisplay";
-
-const BalanceCell = memo(({ balance, symbol, balanceUSD }: { balance: Big, symbol: string, balanceUSD: number }) => {
-  return (
-    <div className="text-right">
-      <div className="font-semibold">
-        {formatCurrency(balanceUSD)}
-      </div>
-      <div className="text-xs text-muted-foreground">
-        {balance.toString()} {symbol}
-      </div>
-    </div>
-  );
-});
-
-BalanceCell.displayName = "BalanceCell";
 
 interface Props {
   tokens: TreasuryAsset[];
