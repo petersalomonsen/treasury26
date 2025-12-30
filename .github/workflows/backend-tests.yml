@@ -58,6 +58,13 @@ jobs:
         FASTNEAR_API_KEY=${{ secrets.FASTNEAR_API_KEY }}
         EOF
     
+    - name: Install sqlx-cli
+      run: cargo install sqlx-cli --no-default-features --features postgres
+    
+    - name: Run migrations
+      working-directory: nt-be
+      run: sqlx migrate run
+    
     - name: Run unit tests
       working-directory: nt-be
       run: cargo test --lib --bins
