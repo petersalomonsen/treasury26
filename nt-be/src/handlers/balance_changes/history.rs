@@ -5,10 +5,10 @@
 //! - CSV Export: Returns raw balance changes as downloadable CSV
 
 use axum::{
-    extract::{Query, State},
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
     Json,
+    extract::{Query, State},
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -42,14 +42,18 @@ pub async fn get_balance_chart(
     Query(params): Query<ChartRequest>,
 ) -> Result<Json<HashMap<String, Vec<BalanceSnapshot>>>, (StatusCode, String)> {
     // Parse timestamps
-    let start_time = parse_datetime(&params.start_time)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid start_time: {}", e)))?;
+    let start_time = parse_datetime(&params.start_time).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Invalid start_time: {}", e),
+        )
+    })?;
     let end_time = parse_datetime(&params.end_time)
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid end_time: {}", e)))?;
 
     // Validate interval
-    let interval_duration = parse_interval(&params.interval)
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    let interval_duration =
+        parse_interval(&params.interval).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
 
     // Load prior balances (most recent balance_after for each token before start_time)
     let prior_balances = load_prior_balances(
@@ -73,7 +77,13 @@ pub async fn get_balance_chart(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Calculate snapshots at each interval
-    let snapshots = calculate_snapshots(changes, prior_balances, start_time, end_time, interval_duration);
+    let snapshots = calculate_snapshots(
+        changes,
+        prior_balances,
+        start_time,
+        end_time,
+        interval_duration,
+    );
 
     Ok(Json(snapshots))
 }
@@ -95,8 +105,12 @@ pub async fn export_balance_csv(
     Query(params): Query<CsvRequest>,
 ) -> Result<Response, (StatusCode, String)> {
     // Parse dates (YYYY-MM-DD)
-    let start_date = parse_date(&params.start_time)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid start_time: {}", e)))?;
+    let start_date = parse_date(&params.start_time).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Invalid start_time: {}", e),
+        )
+    })?;
     let end_date = parse_date(&params.end_time)
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid end_time: {}", e)))?;
 

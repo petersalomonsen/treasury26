@@ -28,12 +28,12 @@ async fn main() {
         use near_api::Chain;
         use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 
-        // Get monitoring interval from env or default to 5 minutes
+        // Get monitoring interval from env (required - no default)
         // If set to 0, monitoring is disabled (useful for tests)
         let interval_minutes: u64 = std::env::var("MONITOR_INTERVAL_MINUTES")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(5);
+            .unwrap_or(5); // Default to 5 minutes if not set
 
         if interval_minutes == 0 {
             log::info!("Background monitoring disabled (MONITOR_INTERVAL_MINUTES=0)");
@@ -50,6 +50,10 @@ async fn main() {
         // Wait a bit before first run to let server fully start
         tokio::time::sleep(Duration::from_secs(10)).await;
 
+        // Use tokio::time::interval for more accurate timing
+        let mut interval_timer = tokio::time::interval(interval);
+        interval_timer.tick().await; // First tick completes immediately
+
         loop {
             log::info!("Running monitoring cycle...");
 
@@ -59,7 +63,7 @@ async fn main() {
                 Err(e) => {
                     log::error!("Failed to get current block height: {}", e);
                     log::info!("Retrying in {} minutes", interval_minutes);
-                    tokio::time::sleep(interval).await;
+                    interval_timer.tick().await;
                     continue;
                 }
             };
@@ -82,7 +86,7 @@ async fn main() {
             }
 
             log::info!("Next monitoring cycle in {} minutes", interval_minutes);
-            tokio::time::sleep(interval).await;
+            interval_timer.tick().await;
         }
     });
 

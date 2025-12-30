@@ -17,23 +17,16 @@
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
-use sqlx::types::chrono::{DateTime, Utc};
 use std::str::FromStr;
 
 use crate::handlers::balance_changes::{
     balance, binary_search, block_info,
     gap_detector::{self, BalanceGap},
+    utils::block_timestamp_to_datetime,
 };
 
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
-
-/// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
-pub(super) fn block_timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
-    let secs = timestamp_nanos / 1_000_000_000;
-    let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
-    DateTime::from_timestamp(secs, nsecs).unwrap_or_else(Utc::now)
-}
 
 /// Result of filling a single gap
 #[derive(Debug, Clone)]

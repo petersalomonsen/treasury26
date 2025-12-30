@@ -23,7 +23,7 @@ async fn load_test_data() {
     // Check if data is already loaded
     let existing_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM balance_changes 
-         WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'"
+         WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'",
     )
     .fetch_one(&pool)
     .await
@@ -38,16 +38,18 @@ async fn load_test_data() {
     println!("Loading webassemblymusic-treasury test data...");
 
     // Read and execute counterparties SQL
-    let counterparties_sql = std::fs::read_to_string("tests/test_data/webassemblymusic_counterparties.sql")
-        .expect("Failed to read counterparties SQL file");
+    let counterparties_sql =
+        std::fs::read_to_string("tests/test_data/webassemblymusic_counterparties.sql")
+            .expect("Failed to read counterparties SQL file");
     sqlx::query(&counterparties_sql)
         .execute(&pool)
         .await
         .expect("Failed to load counterparties");
 
     // Read and execute balance changes SQL (line by line)
-    let balance_changes_sql = std::fs::read_to_string("tests/test_data/webassemblymusic_balance_changes.sql")
-        .expect("Failed to read balance changes SQL file");
+    let balance_changes_sql =
+        std::fs::read_to_string("tests/test_data/webassemblymusic_balance_changes.sql")
+            .expect("Failed to read balance changes SQL file");
 
     for statement in balance_changes_sql.lines() {
         if !statement.trim().is_empty() {
@@ -62,7 +64,7 @@ async fn load_test_data() {
     sqlx::query(
         "INSERT INTO monitored_accounts (account_id, created_at)
          VALUES ('webassemblymusic-treasury.sputnik-dao.near', NOW())
-         ON CONFLICT (account_id) DO NOTHING"
+         ON CONFLICT (account_id) DO NOTHING",
     )
     .execute(&pool)
     .await
@@ -71,7 +73,7 @@ async fn load_test_data() {
     // Show summary
     let balance_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM balance_changes 
-         WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'"
+         WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'",
     )
     .fetch_one(&pool)
     .await
@@ -112,17 +114,18 @@ async fn test_balance_chart_with_real_data() {
     let body_text = response.text().await.expect("Failed to read response body");
 
     assert_eq!(
-        status,
-        200,
+        status, 200,
         "Chart API should return 200. Status: {}, Body: {}",
-        status,
-        body_text
+        status, body_text
     );
 
-    let chart_data: serde_json::Value = serde_json::from_str(&body_text)
-        .expect("Failed to parse JSON response");
+    let chart_data: serde_json::Value =
+        serde_json::from_str(&body_text).expect("Failed to parse JSON response");
 
-    println!("Chart data: {}", serde_json::to_string_pretty(&chart_data).unwrap());
+    println!(
+        "Chart data: {}",
+        serde_json::to_string_pretty(&chart_data).unwrap()
+    );
 
     // Verify response structure - should be grouped by token
     assert!(chart_data.is_object(), "Response should be an object");
@@ -132,14 +135,29 @@ async fn test_balance_chart_with_real_data() {
     // Expected tokens and their balances on Dec 5 (last day)
     let expected_tokens = vec![
         ("near", "26.470207505625583899999977"),
-        ("intents.near:nep245:v2_1.omni.hot.tg:43114_11111111111111111111", "1514765442315238852"),
-        ("intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near", "9999980"),
+        (
+            "intents.near:nep245:v2_1.omni.hot.tg:43114_11111111111111111111",
+            "1514765442315238852",
+        ),
+        (
+            "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+            "9999980",
+        ),
         ("intents.near:nep141:btc.omft.near", "544253"),
         ("intents.near:nep141:xrp.omft.near", "16692367"),
         ("intents.near:nep141:eth.omft.near", "35015088429776132"),
-        ("intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near", "22543646"),
-        ("intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near", "124833020"),
-        ("intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1", "119000000"),
+        (
+            "intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
+            "22543646",
+        ),
+        (
+            "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+            "124833020",
+        ),
+        (
+            "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+            "119000000",
+        ),
         ("intents.near:nep141:sol.omft.near", "83424010"),
         ("intents.near:nep141:wrap.near", "800000000000000000000000"),
         ("arizcredits.near", "3"),
@@ -156,15 +174,27 @@ async fn test_balance_chart_with_real_data() {
 
     // Verify balance values on the last day (Dec 5)
     for (token_id, expected_balance) in &expected_tokens {
-        let token_data = token_map.get(*token_id).expect(&format!("Token {} not found", token_id));
-        assert!(token_data.is_array(), "Token data should be an array for {}", token_id);
+        let token_data = token_map
+            .get(*token_id)
+            .expect(&format!("Token {} not found", token_id));
+        assert!(
+            token_data.is_array(),
+            "Token data should be an array for {}",
+            token_id
+        );
 
         let snapshots = token_data.as_array().unwrap();
-        assert_eq!(snapshots.len(), 5, "Should have 5 daily snapshots for {}", token_id);
+        assert_eq!(
+            snapshots.len(),
+            5,
+            "Should have 5 daily snapshots for {}",
+            token_id
+        );
 
         // Check the last day (Dec 5) has the expected balance
         let last_snapshot = &snapshots[4]; // Index 4 = Dec 5
-        let balance = last_snapshot.get("balance")
+        let balance = last_snapshot
+            .get("balance")
             .and_then(|b| b.as_str())
             .expect(&format!("Balance should be a string for {}", token_id));
 
@@ -176,7 +206,10 @@ async fn test_balance_chart_with_real_data() {
     }
 
     println!("✓ Chart API works with webassemblymusic-treasury data");
-    println!("✓ All {} expected tokens present with correct balances", expected_tokens.len());
+    println!(
+        "✓ All {} expected tokens present with correct balances",
+        expected_tokens.len()
+    );
 }
 
 /// Test CSV export with webassemblymusic-treasury data
@@ -221,7 +254,10 @@ async fn test_csv_export_with_real_data() {
     // Get CSV content
     let csv_content = response.text().await.expect("Failed to read response");
 
-    println!("CSV preview:\n{}", csv_content.lines().take(5).collect::<Vec<_>>().join("\n"));
+    println!(
+        "CSV preview:\n{}",
+        csv_content.lines().take(5).collect::<Vec<_>>().join("\n")
+    );
 
     // Verify CSV structure
     assert!(
@@ -273,12 +309,7 @@ async fn test_chart_api_intervals() {
             .await
             .expect("Failed to send request");
 
-        assert_eq!(
-            response.status(),
-            200,
-            "{} interval should work",
-            interval
-        );
+        assert_eq!(response.status(), 200, "{} interval should work", interval);
 
         let chart_data: serde_json::Value = response
             .json()
@@ -286,7 +317,7 @@ async fn test_chart_api_intervals() {
             .expect("Failed to parse JSON response");
 
         println!("✓ Chart API works with {} interval", interval);
-        
+
         // Verify we got data
         assert!(
             chart_data.is_object() && !chart_data.as_object().unwrap().is_empty(),
