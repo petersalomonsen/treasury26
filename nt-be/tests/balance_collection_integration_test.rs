@@ -1879,17 +1879,18 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
     println!("   Counterparty: {}", block_165324279_change.counterparty);
 
     // Hard assertion: Amount must be 0.0002 BTC (20000 satoshis, BTC has 8 decimals)
+    // Since we now use BigDecimal everywhere, amounts are stored as decimal-formatted values
     let amount =
         BigDecimal::from_str(&block_165324279_change.amount).expect("Amount must be valid decimal");
-    let expected_amount = BigDecimal::from(20000i64);
+    let expected_amount = BigDecimal::from_str("0.0002").expect("Expected amount must be valid");
     assert_eq!(
         amount.abs(),
         expected_amount,
-        "BTC change amount must be 20000 satoshis (0.0002 BTC)"
+        "BTC change amount must be 0.0002 BTC (decimal-formatted)"
     );
 
     println!(
-        "\n✓ Found BTC intents balance change: {} satoshis at block 165324279",
+        "\n✓ Found BTC intents balance change: {} BTC at block 165324279",
         block_165324279_change.amount
     );
 
