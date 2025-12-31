@@ -55,8 +55,9 @@ async fn test_intents_tokens_metadata_discovery() {
     // Run a monitoring cycle - this will:
     // 1. Call snapshot_intents_tokens() to discover intents tokens
     // 2. Insert snapshot records for newly discovered tokens
-    // 3. Fill gaps which will call ensure_ft_metadata() for each token
-    // 4. ensure_ft_metadata() will extract the actual contract and query metadata
+    // 3. Fill gaps, which queries balances for each token
+    // 4. Balance queries trigger ensure_ft_metadata() which extracts the actual
+    //    FT contract and queries/stores metadata
 
     // Use current block where account has intents tokens
     let up_to_block = 179111593; // Current block with intents tokens
@@ -64,15 +65,10 @@ async fn test_intents_tokens_metadata_discovery() {
     // Get network config with fastnear API key
     let network = common::create_archival_network();
 
-    println!("Running first monitoring cycle to discover intents tokens...");
+    println!("Running monitoring cycle to discover intents tokens and fetch metadata...");
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
-        .expect("Failed to run first monitoring cycle");
-
-    println!("\nRunning second monitoring cycle to fetch metadata for discovered tokens...");
-    run_monitor_cycle(&pool, &network, up_to_block)
-        .await
-        .expect("Failed to run second monitoring cycle");
+        .expect("Failed to run monitoring cycle");
 
     // Query all discovered intents token metadata
     let intents_metadata = sqlx::query!(
