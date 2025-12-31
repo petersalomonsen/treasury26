@@ -327,13 +327,13 @@ fn calculate_snapshots(
     for change in &changes {
         by_token
             .entry(change.token_id.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(change);
     }
 
     // Add tokens that have prior balances but no changes in this timeframe
     for token_id in prior_balances.keys() {
-        by_token.entry(token_id.clone()).or_insert_with(Vec::new);
+        by_token.entry(token_id.clone()).or_default();
     }
 
     let mut result: HashMap<String, Vec<BalanceSnapshot>> = HashMap::new();
@@ -345,7 +345,7 @@ fn calculate_snapshots(
         // Get the starting balance for this token
         let starting_balance = prior_balances
             .get(&token_id)
-            .map(|s| s.clone())
+            .cloned()
             .unwrap_or_else(|| "0".to_string());
 
         while current_time < end_time {
@@ -353,7 +353,7 @@ fn calculate_snapshots(
             let balance = token_changes
                 .iter()
                 .filter(|c| c.block_time <= current_time)
-                .last()
+                .next_back()
                 .map(|c| c.balance_after.clone())
                 .unwrap_or_else(|| starting_balance.clone()); // Use starting balance if no changes yet
 
@@ -362,7 +362,7 @@ fn calculate_snapshots(
                 balance,
             });
 
-            current_time = current_time + interval;
+            current_time += interval;
         }
 
         result.insert(token_id, snapshots);
