@@ -254,6 +254,16 @@ async fn test_csv_export_with_real_data() {
     // Get CSV content
     let csv_content = response.text().await.expect("Failed to read response");
 
+    let snapshot_path = "tests/test_data/snapshots/csv_export_snapshot.csv";
+
+    // Generate new snapshots if environment variable is set
+    if std::env::var("GENERATE_NEW_TEST_SNAPSHOTS").is_ok() {
+        std::fs::create_dir_all("tests/test_data/snapshots")
+            .expect("Failed to create snapshots directory");
+        std::fs::write(snapshot_path, &csv_content).expect("Failed to write CSV snapshot");
+        println!("✓ CSV snapshot saved to {}", snapshot_path);
+    }
+
     println!(
         "CSV preview:\n{}",
         csv_content.lines().take(5).collect::<Vec<_>>().join("\n")
@@ -275,9 +285,26 @@ async fn test_csv_export_with_real_data() {
         "CSV should not include NOT_REGISTERED records"
     );
 
-    // Should have multiple rows
+    // Exact row count (1 header + 203 data rows = 204 total)
     let row_count = csv_content.lines().count();
-    assert!(row_count > 1, "CSV should have header + data rows");
+    assert_eq!(
+        row_count, 204,
+        "CSV should have exactly 204 rows (1 header + 203 data rows)"
+    );
+
+    // Compare with snapshot (hard assertion for regression testing)
+    let snapshot_content = std::fs::read_to_string(snapshot_path).expect(&format!(
+        "Failed to read snapshot file: {}\n\
+         To generate new snapshots, run: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test",
+        snapshot_path
+    ));
+
+    assert_eq!(
+        csv_content, snapshot_content,
+        "CSV output does not match snapshot!\n\
+         If this change is expected, regenerate snapshots with:\n\
+         GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test --test balance_history_apis_test"
+    );
 
     println!("✓ CSV export works correctly (found {} rows)", row_count);
 }
@@ -294,6 +321,8 @@ async fn test_chart_api_intervals() {
     // Start the server
     let server = TestServer::start().await;
     let client = reqwest::Client::new();
+
+    let generate_snapshots = std::env::var("GENERATE_NEW_TEST_SNAPSHOTS").is_ok();
 
     // Test with different intervals
     for interval in &["hourly", "daily", "weekly", "monthly"] {
@@ -316,60 +345,64 @@ async fn test_chart_api_intervals() {
             .await
             .expect("Failed to parse JSON response");
 
-        println!("✓ Chart API works with {} interval", interval);
-
         // Verify we got data
         assert!(
             chart_data.is_object() && !chart_data.as_object().unwrap().is_empty(),
             "{} interval should return data",
             interval
         );
-    }
-}
 
-/// Test that CSV includes token_symbol from counterparties table
-#[tokio::test]
-async fn test_csv_includes_token_metadata() {
-    // Load environment variables
-    dotenvy::dotenv().ok();
+        let snapshot_path = format!("tests/test_data/snapshots/chart_{}_snapshot.json", interval);
 
-    // Load test data
-    load_test_data().await;
+        // Generate new snapshots if environment variable is set
+        if generate_snapshots {
+            std::fs::create_dir_all("tests/test_data/snapshots")
+                .expect("Failed to create snapshots directory");
+            let snapshot_content =
+                serde_json::to_string_pretty(&chart_data).expect("Failed to serialize JSON");
+            std::fs::write(&snapshot_path, &snapshot_content)
+                .expect("Failed to write snapshot file");
+            println!("✓ Snapshot saved to {}", snapshot_path);
+        }
 
-    // Start the server
-    let server = TestServer::start().await;
-    let client = reqwest::Client::new();
+        // Compare with snapshot (hard assertion for regression testing)
+        let existing_snapshot = std::fs::read_to_string(&snapshot_path).expect(&format!(
+            "Failed to read snapshot file: {}\n\
+             To generate new snapshots, run: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test",
+            snapshot_path
+        ));
 
-    // Export CSV
-    let response = client
-        .get(server.url("/api/balance-history/csv"))
-        .query(&[
-            ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
-            ("start_time", "2025-06-01"),
-            ("end_time", "2025-12-31"),
-        ])
-        .send()
-        .await
-        .expect("Failed to send request");
+        let expected_data: serde_json::Value =
+            serde_json::from_str(&existing_snapshot).expect("Failed to parse snapshot");
 
-    let csv_content = response.text().await.expect("Failed to read response");
-
-    // Verify CSV has token_symbol column
-    let header_line = csv_content.lines().next().expect("CSV should have header");
-    assert!(
-        header_line.contains("token_symbol"),
-        "CSV header should include token_symbol column"
-    );
-
-    // Check if we have token symbols in the data
-    // The counterparties SQL file should have ARIZ token data
-    if csv_content.contains("arizcredits.near") {
-        assert!(
-            csv_content.contains("ARIZ"),
-            "CSV should include token symbol for arizcredits.near"
+        // Compare token counts
+        let current_tokens = chart_data.as_object().unwrap().len();
+        let expected_tokens = expected_data.as_object().unwrap().len();
+        assert_eq!(
+            current_tokens, expected_tokens,
+            "{} interval: token count mismatch (expected {}, got {})\n\
+             To regenerate snapshots: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test --test balance_history_apis_test",
+            interval, expected_tokens, current_tokens
         );
-        println!("✓ CSV includes token_symbol metadata");
-    } else {
-        println!("⚠ No arizcredits.near transactions in date range, skipping symbol check");
+
+        // Compare data point counts for each token
+        for (token_id, snapshots) in chart_data.as_object().unwrap() {
+            let current_snapshots = snapshots.as_array().unwrap().len();
+            let expected_snapshots = expected_data
+                .get(token_id)
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+
+            assert_eq!(
+                current_snapshots, expected_snapshots,
+                "{} interval, token {}: snapshot count mismatch (expected {}, got {})\n\
+                 To regenerate snapshots: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test --test balance_history_apis_test",
+                interval, token_id, expected_snapshots, current_snapshots
+            );
+        }
+
+        println!("✓ Chart API works with {} interval", interval);
     }
 }
+
