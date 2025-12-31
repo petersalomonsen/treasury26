@@ -43,11 +43,18 @@ async fn load_test_data() {
 
     println!("Loading webassemblymusic-treasury test data...");
 
-    // Clear any partial data from failed previous runs
+    // Clear all test data before loading (tests run serially so this is safe)
     sqlx::query("DELETE FROM balance_changes WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'")
         .execute(&pool)
         .await
-        .expect("Failed to clear existing test data");
+        .expect("Failed to clear balance_changes test data");
+
+    // Clear counterparties that will be loaded by the test data
+    // This includes arizcredits.near and all intents.near tokens
+    sqlx::query("DELETE FROM counterparties WHERE account_id IN ('arizcredits.near') OR account_id LIKE 'intents.near:%'")
+        .execute(&pool)
+        .await
+        .expect("Failed to clear counterparties test data");
 
     // Read and execute counterparties SQL
     let counterparties_sql =
@@ -68,27 +75,11 @@ async fn load_test_data() {
             continue;
         }
 
-        // Execute the statement, adding ON CONFLICT to handle concurrent test runs
-        let sql = if line.to_uppercase().starts_with("INSERT INTO") {
-            // Add ON CONFLICT clause to INSERT statements for counterparties
-            // Replace the final ); with ON CONFLICT clause
-            let trimmed = line.trim_end();
-            if trimmed.ends_with(");") {
-                format!(
-                    "{} ON CONFLICT (account_id) DO NOTHING;",
-                    &trimmed[..trimmed.len() - 2]
-                )
-            } else {
-                line.to_string()
-            }
-        } else {
-            line.to_string()
-        };
-
-        if let Err(e) = sqlx::query(&sql).execute(&pool).await {
+        // Execute the statement as-is (no need for ON CONFLICT since we cleared the data)
+        if let Err(e) = sqlx::query(line).execute(&pool).await {
             panic!(
                 "Failed to execute SQL: {}\nError: {}",
-                &sql[..100.min(sql.len())],
+                &line[..100.min(line.len())],
                 e
             );
         }
