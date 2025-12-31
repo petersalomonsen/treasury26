@@ -168,9 +168,9 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
         &archival_network,
         account_id,
         token_id,
-        check_block_before as u64,              // Start from before withdrawal
-        check_block_after as u64,               // End after withdrawal
-        &BigDecimal::from_str("0").unwrap(),  // Target balance is 0
+        check_block_before as u64,           // Start from before withdrawal
+        check_block_after as u64,            // End after withdrawal
+        &BigDecimal::from_str("0").unwrap(), // Target balance is 0
     )
     .await
     .expect("Should find the balance change block");
@@ -316,8 +316,7 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
 
     // Hard assertions on the withdrawal
     assert_eq!(
-        withdrawal_gap.balance_before,
-        balance_before_withdrawal,
+        withdrawal_gap.balance_before, balance_before_withdrawal,
         "Second run: balance before withdrawal should be 3450"
     );
     assert_eq!(

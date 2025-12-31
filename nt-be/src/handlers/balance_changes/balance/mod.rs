@@ -113,7 +113,10 @@ mod tests {
         // Expected balance after from test data (converted to NEAR from yoctoNEAR)
         use bigdecimal::BigDecimal;
         use std::str::FromStr;
-        assert_eq!(balance, BigDecimal::from_str("11.1002111266305371").unwrap());
+        assert_eq!(
+            balance,
+            BigDecimal::from_str("11.1002111266305371").unwrap()
+        );
     }
 
     #[tokio::test]

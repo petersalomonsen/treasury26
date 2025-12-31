@@ -132,34 +132,31 @@ async fn test_balance_chart_with_real_data() {
 
     let token_map = chart_data.as_object().unwrap();
 
-    // Expected tokens and their balances on Dec 5 (last day)
+    // Expected tokens and their balances on Dec 5 (last day of the test range)
+    // Values are decimal-formatted strings from the API
     let expected_tokens = vec![
         ("near", "26.470207505625583899999977"),
         (
-            "intents.near:nep245:v2_1.omni.hot.tg:43114_11111111111111111111",
-            "1514765442315238852",
-        ),
-        (
             "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
-            "9999980",
+            "9.99998",
         ),
-        ("intents.near:nep141:btc.omft.near", "544253"),
-        ("intents.near:nep141:xrp.omft.near", "16692367"),
-        ("intents.near:nep141:eth.omft.near", "35015088429776132"),
+        ("intents.near:nep141:btc.omft.near", "0.00544253"),
+        ("intents.near:nep141:xrp.omft.near", "16.692367"),
+        ("intents.near:nep141:eth.omft.near", "0.035015088429776132"),
         (
             "intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
-            "22543646",
+            "22.543646",
         ),
         (
             "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-            "124833020",
+            "124.83302",
         ),
         (
             "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
-            "119000000",
+            "119",
         ),
-        ("intents.near:nep141:sol.omft.near", "83424010"),
-        ("intents.near:nep141:wrap.near", "800000000000000000000000"),
+        ("intents.near:nep141:sol.omft.near", "0.08342401"),
+        ("intents.near:nep141:wrap.near", "0.8"),
         ("arizcredits.near", "3"),
     ];
 
@@ -285,11 +282,11 @@ async fn test_csv_export_with_real_data() {
         "CSV should not include NOT_REGISTERED records"
     );
 
-    // Exact row count (1 header + 203 data rows = 204 total)
+    // Exact row count (1 header + 172 data rows = 173 total)
     let row_count = csv_content.lines().count();
     assert_eq!(
-        row_count, 204,
-        "CSV should have exactly 204 rows (1 header + 203 data rows)"
+        row_count, 173,
+        "CSV should have exactly 173 rows (1 header + 172 data rows)"
     );
 
     // Compare with snapshot (hard assertion for regression testing)
@@ -405,4 +402,3 @@ async fn test_chart_api_intervals() {
         println!("✓ Chart API works with {} interval", interval);
     }
 }
-

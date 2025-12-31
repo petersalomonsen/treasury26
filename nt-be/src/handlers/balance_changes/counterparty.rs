@@ -179,7 +179,9 @@ mod tests {
             "eth.omft.near"
         );
         assert_eq!(
-            extract_ft_contract("intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+            extract_ft_contract(
+                "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+            ),
             "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
         );
 
@@ -196,8 +198,14 @@ mod tests {
         use std::str::FromStr;
 
         // arizcredits.near has 6 decimals
-        assert_eq!(convert_raw_to_decimal("2500000", 6).unwrap(), BigDecimal::from_str("2.5").unwrap());
-        assert_eq!(convert_raw_to_decimal("3000000", 6).unwrap(), BigDecimal::from_str("3").unwrap());
+        assert_eq!(
+            convert_raw_to_decimal("2500000", 6).unwrap(),
+            BigDecimal::from_str("2.5").unwrap()
+        );
+        assert_eq!(
+            convert_raw_to_decimal("3000000", 6).unwrap(),
+            BigDecimal::from_str("3").unwrap()
+        );
 
         // NEAR has 24 decimals
         assert_eq!(
@@ -210,6 +218,9 @@ mod tests {
         );
 
         // Zero decimals
-        assert_eq!(convert_raw_to_decimal("100", 0).unwrap(), BigDecimal::from_str("100").unwrap());
+        assert_eq!(
+            convert_raw_to_decimal("100", 0).unwrap(),
+            BigDecimal::from_str("100").unwrap()
+        );
     }
 }

@@ -240,14 +240,15 @@ mod tests {
             "arizcredits balance before (168568480): '{}'",
             balance_before
         );
-        println!(
-            "arizcredits balance after (168568485): '{}'",
-            balance_after
-        );
+        println!("arizcredits balance after (168568485): '{}'", balance_after);
 
         // Hard assertions on decimal-adjusted amounts
         // arizcredits.near has 6 decimals, so raw 3000000 = 3.0 ARIZ (decimal-adjusted)
-        assert_eq!(balance_before, BigDecimal::from(0), "Balance before should be 0");
+        assert_eq!(
+            balance_before,
+            BigDecimal::from(0),
+            "Balance before should be 0"
+        );
         assert_eq!(
             balance_after,
             BigDecimal::from(3),

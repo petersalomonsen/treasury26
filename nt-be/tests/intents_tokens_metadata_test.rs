@@ -27,12 +27,10 @@ async fn test_intents_tokens_metadata_discovery() {
         .expect("Failed to connect to test database");
 
     // Clear any existing counterparties for the tokens we'll test
-    sqlx::query!(
-        "DELETE FROM counterparties WHERE account_id LIKE 'intents.near:%'"
-    )
-    .execute(&pool)
-    .await
-    .expect("Failed to clear test counterparties");
+    sqlx::query!("DELETE FROM counterparties WHERE account_id LIKE 'intents.near:%'")
+        .execute(&pool)
+        .await
+        .expect("Failed to clear test counterparties");
 
     // Clear existing balance changes for the test account
     sqlx::query!(
@@ -114,7 +112,9 @@ async fn test_intents_tokens_metadata_discovery() {
     }
 
     // USDC (optional - not all blocks have this token)
-    if let Some(usdc) = token_map.get("intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near") {
+    if let Some(usdc) = token_map
+        .get("intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near")
+    {
         assert_eq!(usdc.token_symbol.as_deref(), Some("USDC"));
         assert_eq!(usdc.token_decimals, Some(6));
         println!("✓ USDC metadata correct");
