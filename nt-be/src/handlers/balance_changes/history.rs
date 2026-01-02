@@ -161,6 +161,11 @@ struct BalanceChange {
 }
 
 /// Load the most recent balance for each token before start_time
+///
+/// Note: This function contains intentionally duplicated SQL queries for compile-time safety.
+/// We use sqlx::query! macro which requires compile-time verification against the database schema.
+/// The alternative (runtime sqlx::query()) would lose type safety. If you edit one query, ensure
+/// you update the other. The compiler will catch mismatches in return types.
 async fn load_prior_balances(
     pool: &PgPool,
     account_id: &str,
@@ -213,6 +218,11 @@ async fn load_prior_balances(
 }
 
 /// Load balance changes from database
+///
+/// Note: This function contains intentionally duplicated SQL queries for compile-time safety.
+/// We use sqlx::query! macro which requires compile-time verification against the database schema.
+/// The alternative (runtime sqlx::query()) would lose type safety. If you edit one query, ensure
+/// you update the other. The compiler will catch mismatches in return types.
 async fn load_balance_changes(
     pool: &PgPool,
     account_id: &str,
