@@ -29,12 +29,34 @@ pub enum Interval {
 }
 
 impl Interval {
-    pub fn to_duration(&self) -> chrono::Duration {
+    /// Increments the given DateTime by one interval period
+    ///
+    /// For monthly intervals, this properly handles month boundaries by advancing
+    /// to the same day of the next month (e.g., Feb 1 -> Mar 1, not Feb 1 -> Mar 3)
+    pub fn increment(&self, datetime: DateTime<Utc>) -> DateTime<Utc> {
+        use chrono::Datelike;
+
         match self {
-            Interval::Hourly => chrono::Duration::hours(1),
-            Interval::Daily => chrono::Duration::days(1),
-            Interval::Weekly => chrono::Duration::weeks(1),
-            Interval::Monthly => chrono::Duration::days(30), // Approximate
+            Interval::Hourly => datetime + chrono::Duration::hours(1),
+            Interval::Daily => datetime + chrono::Duration::days(1),
+            Interval::Weekly => datetime + chrono::Duration::weeks(1),
+            Interval::Monthly => {
+                // Add one month, handling month/year boundaries properly
+                let month = datetime.month();
+                let year = datetime.year();
+
+                let (new_month, new_year) = if month == 12 {
+                    (1, year + 1)
+                } else {
+                    (month + 1, year)
+                };
+
+                // Keep the same day, time, and timezone
+                datetime
+                    .with_year(new_year)
+                    .and_then(|dt| dt.with_month(new_month))
+                    .expect("Failed to increment month")
+            }
         }
     }
 }
@@ -62,8 +84,6 @@ pub async fn get_balance_chart(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ChartRequest>,
 ) -> Result<Json<HashMap<String, Vec<BalanceSnapshot>>>, (StatusCode, String)> {
-    let interval_duration = params.interval.to_duration();
-
     // Load prior balances (most recent balance_after for each token before start_time)
     let prior_balances = load_prior_balances(
         &state.db_pool,
@@ -91,7 +111,7 @@ pub async fn get_balance_chart(
         prior_balances,
         params.start_time,
         params.end_time,
-        interval_duration,
+        &params.interval,
     );
 
     Ok(Json(snapshots))
@@ -325,7 +345,7 @@ fn calculate_snapshots(
     prior_balances: HashMap<String, BigDecimal>,
     start_time: DateTime<Utc>,
     end_time: DateTime<Utc>,
-    interval: chrono::Duration,
+    interval: &Interval,
 ) -> HashMap<String, Vec<BalanceSnapshot>> {
     // Group changes by token
     let mut by_token: HashMap<String, Vec<&BalanceChange>> = HashMap::new();
@@ -366,7 +386,7 @@ fn calculate_snapshots(
                 balance,
             });
 
-            current_time += interval;
+            current_time = interval.increment(current_time);
         }
 
         result.insert(token_id, snapshots);
