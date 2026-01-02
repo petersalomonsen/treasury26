@@ -48,7 +48,6 @@ async fn main() {
 
             // Use tokio::time::interval for more accurate timing
             let mut interval_timer = tokio::time::interval(interval);
-            interval_timer.tick().await; // First tick completes immediately
 
             loop {
                 interval_timer.tick().await;
