@@ -51,8 +51,8 @@ pub struct ChartRequest {
 
 #[derive(Debug, Serialize)]
 pub struct BalanceSnapshot {
-    pub timestamp: String, // ISO 8601 format
-    pub balance: String,   // Decimal-adjusted balance
+    pub timestamp: String,   // ISO 8601 format
+    pub balance: BigDecimal, // Decimal-adjusted balance
 }
 
 /// Chart API - returns balance snapshots at intervals
@@ -153,9 +153,9 @@ struct BalanceChange {
     token_id: String,
     token_symbol: Option<String>,
     counterparty: String,
-    amount: String,
-    balance_before: String,
-    balance_after: String,
+    amount: BigDecimal,
+    balance_before: BigDecimal,
+    balance_after: BigDecimal,
     transaction_hashes: Vec<String>,
     receipt_id: Vec<String>,
 }
@@ -233,21 +233,21 @@ async fn load_balance_changes(
     let rows = if let Some(tokens) = token_ids {
         sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 bc.block_height,
                 bc.block_time,
                 bc.token_id as "token_id!",
                 c.token_symbol,
                 bc.counterparty as "counterparty!",
-                bc.amount::TEXT as "amount!",
-                bc.balance_before::TEXT as "balance_before!",
-                bc.balance_after::TEXT as "balance_after!",
+                bc.amount as "amount!",
+                bc.balance_before as "balance_before!",
+                bc.balance_after as "balance_after!",
                 bc.transaction_hashes as "transaction_hashes!",
                 bc.receipt_id as "receipt_id!"
             FROM balance_changes bc
             LEFT JOIN counterparties c ON bc.token_id = c.account_id
-            WHERE bc.account_id = $1 
-              AND bc.block_time >= $2 
+            WHERE bc.account_id = $1
+              AND bc.block_time >= $2
               AND bc.block_time < $3
               AND bc.token_id = ANY($4)
             ORDER BY bc.token_id, bc.block_height ASC
@@ -276,21 +276,21 @@ async fn load_balance_changes(
     } else {
         sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 bc.block_height,
                 bc.block_time,
                 bc.token_id as "token_id!",
                 c.token_symbol,
                 bc.counterparty as "counterparty!",
-                bc.amount::TEXT as "amount!",
-                bc.balance_before::TEXT as "balance_before!",
-                bc.balance_after::TEXT as "balance_after!",
+                bc.amount as "amount!",
+                bc.balance_before as "balance_before!",
+                bc.balance_after as "balance_after!",
                 bc.transaction_hashes as "transaction_hashes!",
                 bc.receipt_id as "receipt_id!"
             FROM balance_changes bc
             LEFT JOIN counterparties c ON bc.token_id = c.account_id
-            WHERE bc.account_id = $1 
-              AND bc.block_time >= $2 
+            WHERE bc.account_id = $1
+              AND bc.block_time >= $2
               AND bc.block_time < $3
             ORDER BY bc.token_id, bc.block_height ASC
             "#,
@@ -359,7 +359,7 @@ fn calculate_snapshots(
                 .iter()
                 .rfind(|c| c.block_time <= current_time)
                 .map(|c| c.balance_after.clone())
-                .unwrap_or_else(|| starting_balance.to_string()); // Use starting balance if no changes yet
+                .unwrap_or_else(|| starting_balance.clone()); // Use starting balance if no changes yet
 
             snapshots.push(BalanceSnapshot {
                 timestamp: current_time.to_rfc3339(),

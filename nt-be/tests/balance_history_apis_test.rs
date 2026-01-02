@@ -183,30 +183,33 @@ async fn test_balance_chart_with_real_data() {
     let token_map = chart_data.as_object().unwrap();
 
     // Expected tokens and their balances on Dec 5 (last day of the test range)
-    // Values are decimal-formatted strings from the API
+    // Values are decimal-formatted strings from the API (BigDecimal includes trailing zeros)
     let expected_tokens = vec![
         ("near", "26.470207505625583899999977"),
         (
             "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
-            "9.99998",
+            "9.99998000",
         ),
         ("intents.near:nep141:btc.omft.near", "0.00544253"),
-        ("intents.near:nep141:xrp.omft.near", "16.692367"),
-        ("intents.near:nep141:eth.omft.near", "0.035015088429776132"),
+        ("intents.near:nep141:xrp.omft.near", "16.69236700"),
+        (
+            "intents.near:nep141:eth.omft.near",
+            "0.03501508842977613200",
+        ),
         (
             "intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
-            "22.543646",
+            "22.54364600",
         ),
         (
             "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-            "124.83302",
+            "124.83302000",
         ),
         (
             "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
             "119",
         ),
         ("intents.near:nep141:sol.omft.near", "0.08342401"),
-        ("intents.near:nep141:wrap.near", "0.8"),
+        ("intents.near:nep141:wrap.near", "0.8000"),
         ("arizcredits.near", "3"),
     ];
 
