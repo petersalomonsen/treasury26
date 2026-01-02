@@ -12,6 +12,7 @@ pub mod ft;
 pub mod intents;
 pub mod near;
 
+use bigdecimal::BigDecimal;
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 
@@ -73,10 +74,7 @@ pub async fn get_balance_change_at_block(
     account_id: &str,
     token_id: &str,
     block_height: u64,
-) -> Result<(bigdecimal::BigDecimal, bigdecimal::BigDecimal), Box<dyn std::error::Error>> {
-    use bigdecimal::BigDecimal;
-    use std::str::FromStr;
-
+) -> Result<(BigDecimal, BigDecimal), Box<dyn std::error::Error>> {
     // For now, we query the block and the previous block
     // In the future, this should be optimized with transaction-specific queries
     let balance_after =
@@ -84,7 +82,7 @@ pub async fn get_balance_change_at_block(
     let balance_before = if block_height > 0 {
         get_balance_at_block(pool, network, account_id, token_id, block_height - 1).await?
     } else {
-        BigDecimal::from_str("0")?
+        BigDecimal::from(0)
     };
 
     Ok((balance_before, balance_after))

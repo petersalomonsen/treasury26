@@ -10,7 +10,8 @@ use axum::{
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
-use chrono::{DateTime, NaiveDateTime, Utc};
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -19,11 +20,31 @@ use std::sync::Arc;
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Interval {
+    Hourly,
+    Daily,
+    Weekly,
+    Monthly,
+}
+
+impl Interval {
+    pub fn to_duration(&self) -> chrono::Duration {
+        match self {
+            Interval::Hourly => chrono::Duration::hours(1),
+            Interval::Daily => chrono::Duration::days(1),
+            Interval::Weekly => chrono::Duration::weeks(1),
+            Interval::Monthly => chrono::Duration::days(30), // Approximate
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ChartRequest {
     pub account_id: String,
-    pub start_time: String, // YYYY-MM-DDTHH:mm:ss
-    pub end_time: String,   // YYYY-MM-DDTHH:mm:ss
-    pub interval: String,   // "hourly", "daily", "weekly", "monthly"
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
+    pub interval: Interval,
     #[serde(default)]
     pub token_ids: Option<Vec<String>>, // If omitted, returns all tokens
 }
@@ -41,25 +62,13 @@ pub async fn get_balance_chart(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ChartRequest>,
 ) -> Result<Json<HashMap<String, Vec<BalanceSnapshot>>>, (StatusCode, String)> {
-    // Parse timestamps
-    let start_time = parse_datetime(&params.start_time).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            format!("Invalid start_time: {}", e),
-        )
-    })?;
-    let end_time = parse_datetime(&params.end_time)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid end_time: {}", e)))?;
-
-    // Validate interval
-    let interval_duration =
-        parse_interval(&params.interval).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    let interval_duration = params.interval.to_duration();
 
     // Load prior balances (most recent balance_after for each token before start_time)
     let prior_balances = load_prior_balances(
         &state.db_pool,
         &params.account_id,
-        start_time,
+        params.start_time,
         params.token_ids.as_ref(),
     )
     .await
@@ -69,8 +78,8 @@ pub async fn get_balance_chart(
     let changes = load_balance_changes(
         &state.db_pool,
         &params.account_id,
-        start_time,
-        end_time,
+        params.start_time,
+        params.end_time,
         params.token_ids.as_ref(),
     )
     .await
@@ -80,8 +89,8 @@ pub async fn get_balance_chart(
     let snapshots = calculate_snapshots(
         changes,
         prior_balances,
-        start_time,
-        end_time,
+        params.start_time,
+        params.end_time,
         interval_duration,
     );
 
@@ -91,8 +100,8 @@ pub async fn get_balance_chart(
 #[derive(Debug, Deserialize)]
 pub struct CsvRequest {
     pub account_id: String,
-    pub start_time: String, // YYYY-MM-DD (inclusive)
-    pub end_time: String,   // YYYY-MM-DD (exclusive)
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
     #[serde(default)]
     pub token_ids: Option<Vec<String>>,
 }
@@ -104,22 +113,12 @@ pub async fn export_balance_csv(
     State(state): State<Arc<AppState>>,
     Query(params): Query<CsvRequest>,
 ) -> Result<Response, (StatusCode, String)> {
-    // Parse dates (YYYY-MM-DD)
-    let start_date = parse_date(&params.start_time).map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            format!("Invalid start_time: {}", e),
-        )
-    })?;
-    let end_date = parse_date(&params.end_time)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid end_time: {}", e)))?;
-
     // Query balance changes
     let csv_data = generate_csv(
         &state.db_pool,
         &params.account_id,
-        start_date,
-        end_date,
+        params.start_time,
+        params.end_time,
         params.token_ids.as_ref(),
     )
     .await
@@ -167,15 +166,13 @@ async fn load_prior_balances(
     account_id: &str,
     start_time: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
-) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
-    let mut result = HashMap::new();
-
-    if let Some(tokens) = token_ids {
-        let rows = sqlx::query!(
+) -> Result<HashMap<String, BigDecimal>, Box<dyn std::error::Error>> {
+    let result: HashMap<_, _> = if let Some(tokens) = token_ids {
+        sqlx::query!(
             r#"
             SELECT DISTINCT ON (token_id)
                 token_id as "token_id!",
-                balance_after::TEXT as "balance!"
+                balance_after as "balance!"
             FROM balance_changes
             WHERE account_id = $1
               AND block_time < $2
@@ -187,17 +184,16 @@ async fn load_prior_balances(
             tokens
         )
         .fetch_all(pool)
-        .await?;
-
-        for row in rows {
-            result.insert(row.token_id, row.balance);
-        }
+        .await?
+        .into_iter()
+        .map(|row| (row.token_id, row.balance))
+        .collect()
     } else {
-        let rows = sqlx::query!(
+        sqlx::query!(
             r#"
             SELECT DISTINCT ON (token_id)
                 token_id as "token_id!",
-                balance_after::TEXT as "balance!"
+                balance_after as "balance!"
             FROM balance_changes
             WHERE account_id = $1
               AND block_time < $2
@@ -207,12 +203,11 @@ async fn load_prior_balances(
             start_time
         )
         .fetch_all(pool)
-        .await?;
-
-        for row in rows {
-            result.insert(row.token_id, row.balance);
-        }
-    }
+        .await?
+        .into_iter()
+        .map(|row| (row.token_id, row.balance))
+        .collect()
+    };
 
     Ok(result)
 }
@@ -317,7 +312,7 @@ async fn load_balance_changes(
 /// Calculate balance snapshots at regular intervals
 fn calculate_snapshots(
     changes: Vec<BalanceChange>,
-    prior_balances: HashMap<String, String>,
+    prior_balances: HashMap<String, BigDecimal>,
     start_time: DateTime<Utc>,
     end_time: DateTime<Utc>,
     interval: chrono::Duration,
@@ -346,7 +341,7 @@ fn calculate_snapshots(
         let starting_balance = prior_balances
             .get(&token_id)
             .cloned()
-            .unwrap_or_else(|| "0".to_string());
+            .unwrap_or_else(|| BigDecimal::from(0));
 
         while current_time < end_time {
             // Find the most recent balance_after before or at current_time
@@ -354,7 +349,7 @@ fn calculate_snapshots(
                 .iter()
                 .rfind(|c| c.block_time <= current_time)
                 .map(|c| c.balance_after.clone())
-                .unwrap_or_else(|| starting_balance.clone()); // Use starting balance if no changes yet
+                .unwrap_or_else(|| starting_balance.to_string()); // Use starting balance if no changes yet
 
             snapshots.push(BalanceSnapshot {
                 timestamp: current_time.to_rfc3339(),
@@ -411,32 +406,4 @@ async fn generate_csv(
     }
 
     Ok(csv)
-}
-
-/// Parse YYYY-MM-DDTHH:mm:ss to DateTime
-fn parse_datetime(s: &str) -> Result<DateTime<Utc>, String> {
-    NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S")
-        .map(|dt| DateTime::from_naive_utc_and_offset(dt, Utc))
-        .map_err(|e| format!("Expected format YYYY-MM-DDTHH:mm:ss: {}", e))
-}
-
-/// Parse YYYY-MM-DD to DateTime (start of day)
-fn parse_date(s: &str) -> Result<DateTime<Utc>, String> {
-    NaiveDateTime::parse_from_str(&format!("{} 00:00:00", s), "%Y-%m-%d %H:%M:%S")
-        .map(|dt| DateTime::from_naive_utc_and_offset(dt, Utc))
-        .map_err(|e| format!("Expected format YYYY-MM-DD: {}", e))
-}
-
-/// Parse interval string to Duration
-fn parse_interval(interval: &str) -> Result<chrono::Duration, String> {
-    match interval {
-        "hourly" => Ok(chrono::Duration::hours(1)),
-        "daily" => Ok(chrono::Duration::days(1)),
-        "weekly" => Ok(chrono::Duration::weeks(1)),
-        "monthly" => Ok(chrono::Duration::days(30)), // Approximate
-        _ => Err(format!(
-            "Invalid interval '{}'. Must be: hourly, daily, weekly, or monthly",
-            interval
-        )),
-    }
 }

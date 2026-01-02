@@ -51,6 +51,8 @@ async fn main() {
             interval_timer.tick().await; // First tick completes immediately
 
             loop {
+                interval_timer.tick().await;
+
                 log::info!("Running monitoring cycle...");
 
                 // Get current block height from the network
@@ -59,7 +61,6 @@ async fn main() {
                     Err(e) => {
                         log::error!("Failed to get current block height: {}", e);
                         log::info!("Retrying in {} minutes", interval_minutes);
-                        interval_timer.tick().await;
                         continue;
                     }
                 };
@@ -82,7 +83,6 @@ async fn main() {
                 }
 
                 log::info!("Next monitoring cycle in {} minutes", interval_minutes);
-                interval_timer.tick().await;
             }
         });
     }

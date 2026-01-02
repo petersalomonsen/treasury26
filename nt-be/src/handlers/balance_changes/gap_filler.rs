@@ -384,7 +384,7 @@ async fn fill_gap_to_present(
     // Get the latest record
     let latest_record = sqlx::query!(
         r#"
-        SELECT block_height, balance_after::TEXT as "balance_after!"
+        SELECT block_height, balance_after
         FROM balance_changes
         WHERE account_id = $1 AND token_id = $2
         ORDER BY block_height DESC
@@ -407,7 +407,7 @@ async fn fill_gap_to_present(
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
     // If balance hasn't changed, no gap
-    if current_balance.to_string() == latest.balance_after {
+    if current_balance == latest.balance_after {
         log::info!(
             "No gap to present: balance unchanged at {} for {}/{}",
             current_balance,
